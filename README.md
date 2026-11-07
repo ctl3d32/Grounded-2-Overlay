@@ -1,6 +1,6 @@
 # G2Overlay — overlay externo para Grounded 2
 
-Overlay **externo e somente leitura** em C# (.NET 8, x64) para o Grounded 2 (Unreal Engine **5.7**,
+Overlay **externo e somente leitura** em C# (.NET 8, x64) para o Grounded 2 v0.6.0.3 Rel 3207493 (Unreal Engine **5.7**,
 build `Augusta-CL-3207493`). Desenha ESP de criaturas (caixa 2D verde + barra de vida colorida) sobre a janela
 do jogo, com menu translúcido, pattern scanning, atualização automática de offsets, reconexão automática e
 logs detalhados.
