@@ -1,0 +1,16 @@
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\bin\x64\Release\net8.0-windows\win-x64\Config\offsets.json
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\bin\x64\Release\net8.0-windows\win-x64\Config\signatures.json
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\bin\x64\Release\net8.0-windows\win-x64\G2Overlay.exe
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\bin\x64\Release\net8.0-windows\win-x64\G2Overlay.deps.json
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\bin\x64\Release\net8.0-windows\win-x64\G2Overlay.runtimeconfig.json
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\bin\x64\Release\net8.0-windows\win-x64\G2Overlay.dll
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\bin\x64\Release\net8.0-windows\win-x64\G2Overlay.pdb
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\G2Overlay.GeneratedMSBuildEditorConfig.editorconfig
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\G2Overlay.AssemblyInfoInputs.cache
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\G2Overlay.AssemblyInfo.cs
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\G2Overlay.csproj.CoreCompileInputs.cache
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\G2Overlay.dll
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\refint\G2Overlay.dll
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\G2Overlay.pdb
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\G2Overlay.genruntimeconfig.cache
+C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\obj\x64\Release\net8.0-windows\win-x64\ref\G2Overlay.dll

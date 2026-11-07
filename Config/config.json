@@ -1,0 +1,59 @@
+{
+  "ProcessName": "Grounded2Steam-Win64-Shipping",
+  "EnableOverlay": true,
+  "ShowMenuOnStart": true,
+  "FpsLimit": 60,
+  "HideWhenGameNotFocused": true,
+  "EspBoxes": true,
+  "EspHealthBars": true,
+  "EspNames": true,
+  "EspDistance": true,
+  "EspHealthText": false,
+  "EspTeam": false,
+  "ShowDeadCreatures": false,
+  "ShowPlayers": false,
+  "MaxDistanceMeters": 150,
+  "BoxColor": "#00FF00",
+  "BoxThickness": 1.5,
+  "HealthBarHeight": 4,
+  "BoxSource": "Mesh",
+  "ApplyHealthMultipliers": true,
+  "EspCollectibles": true,
+  "CollectibleFilters": [
+    "milkmolar",
+    "milknugget",
+    "techchip",
+    "uniquechest",
+    "bossmanager"
+  ],
+  "CollectibleItemTokens": [
+    "Key",
+    "Recipe"
+  ],
+  "CollectibleColor": "#00E5FF",
+  "RemovedDefaultFilters": [],
+  "CollectibleColors": {
+    "milkmolar": "#00E5FF",
+    "milknugget": "#00E5FF",
+    "techchip": "#FF4FD8",
+    "key": "#FFD400",
+    "recipe": "#FF8C1A",
+    "uniquechest": "#B388FF",
+    "bossmanager": "#FF5252"
+  },
+  "CollectibleMaxDistanceMeters": 300,
+  "CollectibleBoxExtent": 25,
+  "ShowCollectedCollectibles": false,
+  "EntityScanIntervalMs": 500,
+  "FullRevalidateIntervalMs": 10000,
+  "AutoImportDump": true,
+  "DumpSearchDirectories": [
+    ".",
+    "Claude_Test",
+    "Dumps"
+  ],
+  "LogLevel": "Info",
+  "ConsoleLog": false,
+  "MenuX": 40,
+  "MenuY": 80
+}
