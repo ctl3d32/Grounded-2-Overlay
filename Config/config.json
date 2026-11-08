@@ -19,6 +19,7 @@
   "BoxSource": "Mesh",
   "ApplyHealthMultipliers": true,
   "EspCollectibles": true,
+  "EspArrows": true,
   "CollectibleFilters": [
     "milkmolar",
     "milknugget",
@@ -39,7 +40,8 @@
     "key": "#FFD400",
     "recipe": "#FF8C1A",
     "uniquechest": "#B388FF",
-    "bossmanager": "#FF5252"
+    "bossmanager": "#FF5252",
+    "arrow": "#C8FF5A"
   },
   "CollectibleMaxDistanceMeters": 300,
   "CollectibleBoxExtent": 25,

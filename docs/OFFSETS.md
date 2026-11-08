@@ -3,7 +3,7 @@
 Fonte primária: dump do SDK `Grounded2Steam-Win64-Shipping-dump-20261030-221514.jsonl`
 (`ue_version: 507`, 485.401 objetos, 9.064 classes, 7.684 structs, 2.696 enums, 0 erros).
 
-Os offsets **refletidos** foram conferidos por script contra o dump: os 43 offsets refletidos dos 52 valores padrão do código
+Os offsets **refletidos** foram conferidos por script contra o dump: os 45 offsets refletidos dos 54 valores padrão do código
 (`UnrealSDK/Offsets.cs`) batem exatamente com o dump (0 divergências). Os **não refletidos** não aparecem
 no dump e por isso **não são assumidos**: o `LayoutDetector` testa candidatos e só aceita o que passa na validação.
 
@@ -105,6 +105,8 @@ Criatura (ASurvivalCreature : ASurvivalCharacter : ACharacter : APawn : AActor)
 | `TameableComponent.TameData` | TameableComponent | TameData | `0x120` | Dump (UPROPERTY) | UTamedCreatureData* (null = não domado) |
 | `TamedCreatureData.TameState` | TamedCreatureData | TameState | `0x168` | Dump (UPROPERTY) | ETamedState (0 None, 1 New, 2 Tame) |
 | `BossManager.bBossActive` | BossManager | bBossActive | `0x438` | Dump (UPROPERTY) | bool (luta em andamento) |
+| `Actor.BlueprintCreatedComponents` | Actor | BlueprintCreatedComponents | `0x2A8` | Dump (UPROPERTY) | TArray<UActorComponent*> |
+| `Actor.InstanceComponents` | Actor | InstanceComponents | `0x298` | Dump (UPROPERTY) | TArray<UActorComponent*> |
 
 ## Membros não refletidos — como cada um é validado
 
@@ -258,3 +260,38 @@ no dump. O nome exibido vem da classe: `BP_BossManager_Tarantula_C` → "Boss: T
 (`bBossActive != 0`), o rótulo ganha "(luta ativa)". Não existe campo de "chefe derrotado" na classe, então a arena
 continua marcada depois da vitória. Para escondê-la, remova `bossmanager` de `CollectibleFilters` e inclua-o em
 `RemovedDefaultFilters`.
+
+## Pontos fracos (weak spots)
+
+No jogo, os pontos fracos são **componentes de colisão do blueprint de cada criatura**, nomeados pelo designer:
+
+| Classe (dump) | Componentes | Tipo |
+|---|---|---|
+| `BP_Ant_C` (e derivadas: soldado, operária, buggy…) | `LeftEyeWeakspot`, `RightEyeWeakspot` | BoxComponent |
+| `BP_Ladybug_Augusta_C` | `LeftLegWeakpoint1/2`, `RightLegWeakpoint1/2` | BoxComponent |
+
+O dump só contém os blueprints carregados no momento em que foi gerado. Por isso a detecção é feita **em tempo de execução**,
+para qualquer criatura:
+
+```
+Actor +0x2A8 BlueprintCreatedComponents (TArray<UActorComponent*>)  ┐  nome do componente contém "weak" (WeakSpotTerms)
+Actor +0x298 InstanceComponents         (TArray<UActorComponent*>)  ┘  e a classe deriva de SceneComponent
+      → posição por frame: componente +0x1F0 ComponentToWorld.Translation (+0x20)
+```
+
+A busca roda uma vez por criatura, quando ela entra no scan. O log registra uma linha por classe:
+`Pontos fracos de BP_Ant_Soldier_Augusta_C: LeftEyeWeakspot, RightEyeWeakspot` ou `... nenhum componente com weak no nome`.
+Se alguma criatura usar outro padrão de nome, acrescente o termo em `WeakSpotTerms` no `config.json`.
+
+AimBot (`AimWeakSpots`): mira no ponto fraco **mais próximo da mira** entre os visíveis; se a criatura não tiver nenhum,
+volta para o corpo (`AimHeight`). ESP (`EspWeakSpots`): círculo amarelo em cada ponto fraco.
+
+## Flechas no chão — Arrow
+
+Identificadas pelo diagnóstico F9 (logs de 08/11): `BP_World_Arrow_C ► BP_WorldItem_C ► SpawnedItem`, item `Arrow`.
+O dump também tem os dados de spawn `SD_Augusta_World_Arrow{, _Mint, _Poison, _Spicy}_C`.
+
+Regra: "Arrow" como **palavra inteira** (entre `_`) do nome de uma classe da cadeia, só em itens no chão (`SpawnedItem`).
+Isso exclui `ArrowComponent` (componente de editor), `…CenterNarrow…` (widget) e qualquer outro objeto que não seja item.
+Categoria própria (`EntityManager.ArrowCategory = "arrow"`), com opção independente `EspArrows`, que mostra as flechas
+mesmo com os demais coletáveis desligados. Cor: verde-limão (`CollectibleColors.arrow`).

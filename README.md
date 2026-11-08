@@ -1,6 +1,6 @@
 # G2Overlay — overlay externo para Grounded 2
 
-Overlay **externo e somente leitura** em C# (.NET 8, x64) para o Grounded 2 v0.6.0.3 Rel 3207493 (Unreal Engine **5.7**,
+Overlay **externo e somente leitura** em C# (.NET 8, x64) para o Grounded 2 (Unreal Engine **5.7**,
 build `Augusta-CL-3207493`). Desenha ESP de criaturas (caixa 2D verde + barra de vida colorida) sobre a janela
 do jogo, com menu translúcido, pattern scanning, atualização automática de offsets, reconexão automática e
 logs detalhados.
@@ -31,6 +31,7 @@ Requisitos: **Windows 10/11 x64** e **.NET 8 SDK** (`winget install Microsoft.Do
 Visual Studio 2022 (17.8+) é opcional.
 
 ```powershell
+cd "C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay"
 dotnet build G2Overlay.sln -c Release
 ```
 
@@ -87,7 +88,10 @@ Na primeira execução, o overlay procura o dump mais recente (`*dump*.jsonl`) e
 | `AimHeight` | 0.55 | ponto de mira na caixa (0 base, 0,5 centro, 1 topo) |
 | `AimMaxDistanceMeters` | 60 | alcance da mira |
 | `AimShowFov` / `AimTargetIncapacitated` | true / false | desenhar o círculo; mirar criaturas nocauteadas |
+| `AimWeakSpots` / `EspWeakSpots` | true / true | mirar no ponto fraco mais próximo da mira (se a criatura tiver); marcar pontos fracos no ESP |
+| `WeakSpotTerms` | `["weak"]` | termos no nome dos componentes que identificam pontos fracos (ex.: `LeftEyeWeakspot`) |
 | `AimIgnoreTamed` | true | não mirar pets e buggies domados (`TameState == Tame` ou classe `*_Buggy_*` / `*_Pet_*`) |
+| `EspArrows` | true | flechas no chão (`BP_World_Arrow_*`: Arrow, Mint, Poison, Spicy) em verde-limão — opção própria na aba Coletáveis |
 | `CollectibleItemTokens` | `["Key","Recipe"]` | palavras que precisam aparecer inteiras (entre `_`) no nome da classe de um **item no chão**: `BP_Key_CoaltanaMats_C`, `BP_Recipe_SpicyKatana_C` |
 | `CollectibleColors` | milk → `#00E5FF`, techchip → `#FF4FD8` | cor por termo |
 | `RemovedDefaultFilters` | `[]` | termos padrão que você removeu de propósito (não são readicionados) |

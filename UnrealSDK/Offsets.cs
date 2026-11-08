@@ -87,6 +87,8 @@ public static class Off
     public static int TameableComponent_TameData;
     public static int TamedCreatureData_TameState;
     public static int BossManager_bBossActive;
+    public static int Actor_BlueprintCreatedComponents;
+    public static int Actor_InstanceComponents;
 
     public static readonly OffsetDef[] Defs =
     {
@@ -151,6 +153,10 @@ public static class Off
 
         // Arenas de chefes
         new("BossManager.bBossActive", "BossManager", "bBossActive", 0x438, OffsetSource.Reflected, "bool (luta em andamento)"),
+
+        // Componentes do ator (pontos fracos = componentes com "weak" no nome, ex.: LeftEyeWeakspot)
+        new("Actor.BlueprintCreatedComponents", "Actor", "BlueprintCreatedComponents", 0x2A8, OffsetSource.Reflected, "TArray<UActorComponent*> (componentes do blueprint)"),
+        new("Actor.InstanceComponents", "Actor", "InstanceComponents", 0x298, OffsetSource.Reflected, "TArray<UActorComponent*>"),
     };
 
     private static readonly Dictionary<string, int> Values = new(StringComparer.OrdinalIgnoreCase);
@@ -231,6 +237,8 @@ public static class Off
         TameableComponent_TameData = Values["TameableComponent.TameData"];
         TamedCreatureData_TameState = Values["TamedCreatureData.TameState"];
         BossManager_bBossActive = Values["BossManager.bBossActive"];
+        Actor_BlueprintCreatedComponents = Values["Actor.BlueprintCreatedComponents"];
+        Actor_InstanceComponents = Values["Actor.InstanceComponents"];
     }
 
     // ------------------------------------------------------------------ persistência

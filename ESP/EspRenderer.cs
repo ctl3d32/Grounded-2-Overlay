@@ -19,6 +19,7 @@ public sealed class EspRenderer
     private static readonly D2DColor TextColor = new(1f, 1f, 1f, 0.95f);
     private static readonly D2DColor DimText = new(0.85f, 0.85f, 0.85f, 0.9f);
     private static readonly D2DColor DeadColor = new(0.55f, 0.55f, 0.55f, 0.9f);
+    private static readonly D2DColor WeakSpotColor = new(1f, 0.85f, 0.1f, 1f);
 
     public int DrawnLastFrame { get; private set; }
     public int CollectiblesDrawnLastFrame { get; private set; }
@@ -90,6 +91,17 @@ public sealed class EspRenderer
 
             if (_cfg.EspTeam && c.Team.Length > 0)
                 r.DrawText(c.Team, cx, belowY, DimText, TextAlign.Center);
+
+            // 4) Pontos fracos
+            if (_cfg.EspWeakSpots && c.HasWeakSpots && !c.IsDead)
+            {
+                for (int k = 0; k < c.WeakSpots.Length; k++)
+                {
+                    if (!c.WeakSpotValid[k] || !cam.WorldToScreen(c.WeakSpotPos[k], out var ws)) continue;
+                    r.DrawEllipse(ws.X, ws.Y, 5f, 5f, Outline, 3f);
+                    r.DrawEllipse(ws.X, ws.Y, 5f, 5f, WeakSpotColor, 1.5f);
+                }
+            }
 
             drawn++;
         }

@@ -156,7 +156,7 @@ public sealed class OverlayApp : IDisposable
                 }
 
                 _esp.Draw(_renderer, session.Camera, session.Entities!.Creatures);
-                if (_cfg.EspCollectibles) _esp.DrawCollectibles(_renderer, session.Camera, session.Entities.Collectibles);
+                if (_cfg.EspCollectibles || _cfg.EspArrows) _esp.DrawCollectibles(_renderer, session.Camera, session.Entities.Collectibles);
 
                 // AimBot: só com a janela do JOGO em foco (não o overlay) e o menu fechado.
                 bool gameHasFocus = Native.GetForegroundWindow() == _monitor.GameWindow;
@@ -220,7 +220,7 @@ public sealed class OverlayApp : IDisposable
                 _status.Add(_aim.Target != null
                     ? $"AimBot: alvo '{_aim.Target.Name}' a {_aim.Target.DistanceMeters:F0} m"
                     : $"AimBot: pronto (segure {AimAssist.KeyLabel(_cfg.AimKey)})");
-            if (s.Entities != null && _cfg.EspCollectibles)
+            if (s.Entities != null && (_cfg.EspCollectibles || _cfg.EspArrows))
                 _status.Add($"Coletáveis: {s.Entities.Collectibles.Count} rastreados · {_esp.CollectiblesDrawnLastFrame} na tela");
             _status.Add($"Layout: Actors {Ok(s.Layout.ActorsValidated)} · C2W {Ok(s.Layout.TransformValidated)} · Bounds {Ok(s.Layout.BoundsValidated)}");
             _status.Add($"Leituras/s: {_readsPerSec:F0}");

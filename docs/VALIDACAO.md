@@ -63,6 +63,7 @@ Para mais detalhe, rode com `G2Overlay.exe --debug`.
 - [ ] Log: `palavras de item: Key, Recipe`. Perto de uma chave: caixa **amarela** "Key …"; perto de uma receita: caixa **laranja** "Recipe …".
 - [ ] Pés/sementes de limão-taiti (KeyLime) e a bancada de receitas **não** recebem caixa.
 - [ ] Perto de um baú enterrado: caixa **lilás** "Unique Chest (Ice Cart)" / "Unique Chest (Coaltana)"; depois de desenterrado, some (ou fica cinza com "Mostrar já coletados").
+- [ ] Flechas no chão: caixa **verde-limão** "Arrow" com "Flechas no chão (Arrow)" ligado, mesmo com "Coletáveis e arenas de chefes" desligado; somem ao serem recolhidas.
 - [ ] Arenas de chefes: caixa **vermelho-claro** "Boss: Tarantula" / "Boss: Centipede" / "Boss: Lizard" / "Boss: Subject V" no altar; durante a luta o rótulo mostra "(luta ativa)".
 - [ ] Se um coletável não aparecer: pare ao lado dele, aperte **F9** (ou o botão "Diagnóstico" do menu) e envie o log — as linhas `[Diag]` mostram classe, nome do objeto e RowNames de tudo num raio de 15 m.
 
@@ -74,6 +75,9 @@ Para mais detalhe, rode com `G2Overlay.exe --debug`.
 - [ ] Soltando a tecla, a mira é liberada na hora.
 - [ ] Outros jogadores nunca recebem o contorno vermelho, mesmo com "Mostrar jogadores" ligado.
 - [ ] Criaturas mortas não são alvo.
+- [ ] Log: `Pontos fracos de BP_Ant_…: LeftEyeWeakspot, RightEyeWeakspot` e `Pontos fracos de BP_Ladybug_Augusta_C: …Leg…`.
+- [ ] Formigas: círculos amarelos nos olhos; joaninhas: nas pernas. Com "Mirar no ponto fraco", o "+" vermelho vai para o ponto fraco mais próximo da mira.
+- [ ] Criatura sem ponto fraco: a mira volta para o corpo (altura do ponto de mira).
 - [ ] Seu pet/buggy aparece no ESP com "[pet]" e nunca recebe o contorno vermelho (com "Ignorar pets e buggies" ligado, o padrão).
 - [ ] Com o menu aberto ou com outra janela em foco, o AimBot não mexe o mouse.
 - [ ] Se a câmera oscilar em volta do alvo: aumente "Suavização" (ou baixe `AimGain`). Se for lenta demais: o contrário.

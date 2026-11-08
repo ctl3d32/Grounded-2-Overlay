@@ -37,6 +37,9 @@ public sealed class OverlayConfig
     // ---------------- ESP de coletáveis
     public bool EspCollectibles { get; set; } = true;
 
+    /// <summary>Flechas no chão (BP_World_Arrow_*, itens "Arrow…"), categoria independente dos demais coletáveis.</summary>
+    public bool EspArrows { get; set; } = true;
+
     /// <summary>
     /// Termos procurados (sem diferenciar maiúsculas, ignorando "_" e espaços) no nome da classe do ator
     /// e no NodeData.RowName de HarvestNodes. Os Milk Molars do mundo são "BP_Milk_Nugget_*".
@@ -60,6 +63,7 @@ public sealed class OverlayConfig
         ["recipe"] = "#FF8C1A",
         ["uniquechest"] = "#B388FF",
         ["bossmanager"] = "#FF5252",
+        ["arrow"] = "#C8FF5A",
     };
     public string CollectibleColor { get; set; } = "#00E5FF";
 
@@ -102,6 +106,15 @@ public sealed class OverlayConfig
     /// <summary>Não mirar criaturas domadas (pets / buggies).</summary>
     public bool AimIgnoreTamed { get; set; } = true;
 
+    /// <summary>Mirar no ponto fraco mais próximo da mira (se a criatura tiver); senão, no corpo.</summary>
+    public bool AimWeakSpots { get; set; } = true;
+
+    /// <summary>Desenhar marcadores nos pontos fracos das criaturas.</summary>
+    public bool EspWeakSpots { get; set; } = true;
+
+    /// <summary>Termos procurados no nome dos componentes da criatura para identificar pontos fracos.</summary>
+    public List<string> WeakSpotTerms { get; set; } = new() { "weak" };
+
     // ---------------- Desempenho
     public int EntityScanIntervalMs { get; set; } = 500;
     public int FullRevalidateIntervalMs { get; set; } = 10000;
@@ -136,6 +149,9 @@ public sealed class OverlayConfig
         AimHeight = Math.Clamp(AimHeight, 0f, 1f);
         AimMaxDistanceMeters = Math.Clamp(AimMaxDistanceMeters, 2f, 1000f);
         if (AimKey <= 0 || AimKey > 0xFE) AimKey = 0x02;
+        WeakSpotTerms ??= new List<string>();
+        WeakSpotTerms = WeakSpotTerms.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+        if (WeakSpotTerms.Count == 0) WeakSpotTerms.Add("weak");
         CollectibleFilters = CollectibleFilters.Where(f => !string.IsNullOrWhiteSpace(f)).ToList();
         // Migração: "opticaldisk" (versão anterior) não existe no jogo — o item é o Tech Chip (BP_TechChip_Base_C).
         CollectibleFilters.RemoveAll(f => f.Equals("opticaldisk", StringComparison.OrdinalIgnoreCase));
@@ -169,6 +185,7 @@ public sealed class OverlayConfig
             !RemovedDefaultFilters.Any(f => f.Equals("bossmanager", StringComparison.OrdinalIgnoreCase)))
             CollectibleFilters.Add("bossmanager");
         CollectibleColors.TryAdd("bossmanager", "#FF5252");
+        CollectibleColors.TryAdd("arrow", "#C8FF5A");
         if (BoxSource != "Mesh" && BoxSource != "Capsule") BoxSource = "Mesh";
         if (string.IsNullOrWhiteSpace(ProcessName)) ProcessName = "Grounded2Steam-Win64-Shipping";
     }

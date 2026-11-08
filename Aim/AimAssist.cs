@@ -130,11 +130,33 @@ public sealed class AimAssist
         if (c.IsTamed && _cfg.AimIgnoreTamed) return false; // pets / buggies aliados
         if (c.DistanceMeters > _cfg.AimMaxDistanceMeters) return false;
 
-        // AimHeight 0 = base da caixa, 0,5 = centro, 1 = topo.
+        var center = new Vector2(cx, cy);
+
+        // Ponto fraco: o mais próximo da mira entre os visíveis na tela.
+        if (_cfg.AimWeakSpots && c.HasWeakSpots)
+        {
+            float best = float.MaxValue;
+            bool any = false;
+            for (int i = 0; i < c.WeakSpots.Length; i++)
+            {
+                if (!c.WeakSpotValid[i] || !cam.WorldToScreen(c.WeakSpotPos[i], out var ws)) continue;
+                float d = Vector2.Distance(ws, center);
+                if (d < best)
+                {
+                    best = d;
+                    p = ws;
+                    any = true;
+                }
+            }
+
+            if (any) return best <= radius;
+        }
+
+        // Corpo: AimHeight 0 = base da caixa, 0,5 = centro, 1 = topo.
         double z = c.BoxExtent.Z * (_cfg.AimHeight * 2.0 - 1.0);
         var world = new FVector(c.BoxCenter.X, c.BoxCenter.Y, c.BoxCenter.Z + z);
         if (!cam.WorldToScreen(world, out p)) return false;
-        return Vector2.Distance(p, new Vector2(cx, cy)) <= radius;
+        return Vector2.Distance(p, center) <= radius;
     }
 
     /// <summary>Desenha o círculo de FOV e destaca o alvo atual.</summary>

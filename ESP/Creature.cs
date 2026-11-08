@@ -28,6 +28,10 @@ public sealed class Creature
     /// <summary>Classe com "Buggy" ou "Pet" como parte do nome (ex.: BP_Ant_Soldier_Augusta_Buggy_C).</summary>
     public bool IsTamedByName;
 
+    /// <summary>Pontos fracos: componentes de cena com "weak" no nome (ex.: LeftEyeWeakspot, RightLegWeakpoint1).</summary>
+    public ulong[] WeakSpots = Array.Empty<ulong>();
+    public string[] WeakSpotNames = Array.Empty<string>();
+
     // ---------------- dinâmicos (frame)
     public FVector Location;
     public FVector BoxCenter;
@@ -40,6 +44,11 @@ public sealed class Creature
 
     /// <summary>Domada/aliada: TameData.TameState == Tame, ou classe de buggy/pet.</summary>
     public bool IsTamed;
+
+    /// <summary>Posição de cada ponto fraco neste frame (ComponentToWorld.Translation) e se a leitura é válida.</summary>
+    public FVector[] WeakSpotPos = Array.Empty<FVector>();
+    public bool[] WeakSpotValid = Array.Empty<bool>();
+    public bool HasWeakSpots => WeakSpots.Length > 0;
 
     public float HealthRatio => MaxHealth > 0 ? Math.Clamp(CurrentHealth / MaxHealth, 0f, 1f) : 0f;
     public bool IsDead => HealthState == 2;

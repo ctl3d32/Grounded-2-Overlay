@@ -29,6 +29,9 @@ public sealed class EntityManager
     private readonly Dictionary<ulong, string?> _classMatchCache = new(512);
     private string[] _filters = Array.Empty<string>();
     private string[] _itemTokens = Array.Empty<string>();
+
+    /// <summary>Categoria das flechas no chão (controlada por EspArrows, não por CollectibleFilters).</summary>
+    public const string ArrowCategory = "arrow";
     private string _filtersKey = "";
     // Cache negativo: ator → instante (Stopwatch ticks) em que deve ser reclassificado.
     // Cada entrada expira num tempo aleatório entre 0,5× e 1,5× FullRevalidateIntervalMs, para que a
@@ -161,7 +164,7 @@ public sealed class EntityManager
 
                 if (_collectibles.TryGetValue(actor, out var existingCol))
                 {
-                    if (_cfg.EspCollectibles && _obj.GetClass(actor) == existingCol.ClassPtr)
+                    if ((_cfg.EspCollectibles || _cfg.EspArrows) && _obj.GetClass(actor) == existingCol.ClassPtr)
                     {
                         _seen.Add(actor);
                         continue;
@@ -183,7 +186,7 @@ public sealed class EntityManager
                 if (ci == null) continue; // leitura falhou: tenta no próximo scan
                 if (!ci.IsSurvivalCharacter)
                 {
-                    var col = _cfg.EspCollectibles && ci.IsActor ? TryBuildCollectible(actor, cls, ci) : null;
+                    var col = (_cfg.EspCollectibles || _cfg.EspArrows) && ci.IsActor ? TryBuildCollectible(actor, cls, ci) : null;
                     if (col != null)
                     {
                         _collectibles[actor] = col;
@@ -300,7 +303,9 @@ public sealed class EntityManager
         if (!_layout.BoundsValidated && ProcessMemory.IsValidObjectPointer(c.Mesh))
             _layout.DetectBounds(c.Mesh, ReadLocation(c.RootComponent));
 
-        Logger.Debug(Cat, $"Nova criatura: '{c.Name}' [{ci.Name}] time='{c.Team}' actor=0x{actor:X} health=0x{c.HealthComponent:X} mult={c.HealthMultiplier:F2}");
+        FindWeakSpots(c, ci);
+
+        Logger.Debug(Cat, $"Nova criatura: '{c.Name}' [{ci.Name}] time='{c.Team}' actor=0x{actor:X} health=0x{c.HealthComponent:X} mult={c.HealthMultiplier:F2} pontos fracos={c.WeakSpots.Length}");
         return c;
     }
 
@@ -347,7 +352,7 @@ public sealed class EntityManager
     /// </summary>
     private Collectible? TryBuildCollectible(ulong actor, ulong cls, ClassInfo ci)
     {
-        if (_filters.Length == 0 && _itemTokens.Length == 0) return null;
+        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows) return null;
 
         string? filter = null, matchedBy = null, rowName = "";
         if (!_classMatchCache.TryGetValue(cls, out string? classFilter))
@@ -358,6 +363,20 @@ public sealed class EntityManager
                 if (n == "Actor") break;
                 classFilter = MatchFilter(ObjectReader.Normalize(n));
                 if (classFilter != null) break;
+            }
+
+            // Flechas no chão: "Arrow" como palavra inteira (BP_World_Arrow_C, BP_World_Arrow_Mint_C…), só em itens.
+            if (ci.IsSpawnedItem && classFilter == null)
+            {
+                foreach (var n in ci.Chain)
+                {
+                    if (n == "BP_WorldItem_C" || n == "SpawnedItem") break;
+                    if (n.Split('_').Any(part => part.Equals("Arrow", StringComparison.OrdinalIgnoreCase)))
+                    {
+                        classFilter = ArrowCategory;
+                        break;
+                    }
+                }
             }
 
             // Palavras de item (Key, Recipe): palavra inteira do nome da classe, só em itens no chão.
@@ -511,6 +530,61 @@ public sealed class EntityManager
         return false;
     }
 
+    // ================================================================== PONTOS FRACOS
+
+    private readonly HashSet<ulong> _weakSpotClassLogged = new();
+
+    /// <summary>
+    /// Percorre BlueprintCreatedComponents + InstanceComponents da criatura e guarda os componentes de cena cujo
+    /// nome contém um termo de WeakSpotTerms (padrão "weak": LeftEyeWeakspot, RightLegWeakpoint1…).
+    /// Feito uma vez por criatura (no scan); as posições são lidas por frame.
+    /// </summary>
+    private void FindWeakSpots(Creature c, ClassInfo ci)
+    {
+        var found = new List<ulong>(4);
+        var names = new List<string>(4);
+        foreach (int arrOff in new[] { Off.Actor_BlueprintCreatedComponents, Off.Actor_InstanceComponents })
+        {
+            if (!_mem.TryRead(c.Actor + (ulong)arrOff, out TArrayHeader arr)) continue;
+            if (arr.Num <= 0 || !arr.IsPlausible(1024)) continue;
+            var comps = new ulong[arr.Num];
+            if (!_mem.ReadArray(arr.Data, comps.AsSpan())) continue;
+
+            foreach (ulong comp in comps)
+            {
+                if (!ProcessMemory.IsValidObjectPointer(comp) || found.Contains(comp)) continue;
+                string name = _names.GetObjectName(comp);
+                if (name.Length == 0 || !_cfg.WeakSpotTerms.Any(t => name.Contains(t, StringComparison.OrdinalIgnoreCase))) continue;
+                var cci = _obj.GetObjectClassInfo(comp);
+                if (cci == null || Array.IndexOf(cci.Chain, "SceneComponent") < 0) continue; // precisa ter posição
+                found.Add(comp);
+                names.Add(name);
+            }
+        }
+
+        c.WeakSpots = found.ToArray();
+        c.WeakSpotNames = names.ToArray();
+        c.WeakSpotPos = new FVector[found.Count];
+        c.WeakSpotValid = new bool[found.Count];
+
+        if (_weakSpotClassLogged.Add(c.ClassPtr))
+        {
+            Logger.Info(Cat, found.Count > 0
+                ? $"Pontos fracos de {ci.Name}: {string.Join(", ", names)}"
+                : $"Pontos fracos de {ci.Name}: nenhum componente com {string.Join("/", _cfg.WeakSpotTerms)} no nome (mira no corpo).");
+        }
+    }
+
+    private void UpdateWeakSpots(Creature c)
+    {
+        for (int i = 0; i < c.WeakSpots.Length; i++)
+        {
+            c.WeakSpotValid[i] = _mem.TryRead(c.WeakSpots[i] + (ulong)Off.SceneComponent_ComponentToWorld + 0x20, out FVector p)
+                                 && p.IsFinite && !p.IsZero && p.DistanceTo(c.Location) < 5000;
+            if (c.WeakSpotValid[i]) c.WeakSpotPos[i] = p;
+        }
+    }
+
     private static float SaneMultiplier(float m) => m > 0.01f && m < 100f && float.IsFinite(m) ? m : 1f;
 
     private FVector ReadLocation(ulong root)
@@ -559,6 +633,9 @@ public sealed class EntityManager
                 c.BoxCenter = c.Location;
                 c.BoxExtent = new FVector(c.CapsuleRadius, c.CapsuleRadius, c.CapsuleHalfHeight);
             }
+
+            if (c.HasWeakSpots && _layout.TransformValidated && (_cfg.EspWeakSpots || (_cfg.AimEnabled && _cfg.AimWeakSpots)))
+                UpdateWeakSpots(c);
 
             c.Visible = true;
             visible++;
@@ -635,7 +712,7 @@ public sealed class EntityManager
         foreach (var c in _collectibles.Values)
         {
             c.Visible = false;
-            if (!_cfg.EspCollectibles) continue;
+            if (!(c.Filter == ArrowCategory ? _cfg.EspArrows : _cfg.EspCollectibles)) continue;
 
             c.Location = ReadLocation(c.RootComponent);
             if (!c.Location.IsFinite || c.Location.IsZero) continue;

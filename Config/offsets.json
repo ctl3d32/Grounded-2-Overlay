@@ -56,6 +56,8 @@
     "SurvivalCharacter.TameableComponent": "0x14A8",
     "TameableComponent.TameData": "0x120",
     "TamedCreatureData.TameState": "0x168",
-    "BossManager.bBossActive": "0x438"
+    "BossManager.bBossActive": "0x438",
+    "Actor.BlueprintCreatedComponents": "0x2A8",
+    "Actor.InstanceComponents": "0x298"
   }
 }

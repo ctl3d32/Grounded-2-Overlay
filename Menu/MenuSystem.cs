@@ -129,8 +129,11 @@ public sealed class MenuSystem
         switch (_tab)
         {
             case 0: // ESP
-                v = _cfg.EspBoxes; if (Checkbox("Bounding box", ref v)) _cfg.EspBoxes = v;
-                v = _cfg.EspHealthBars; if (Checkbox("Barra de vida", ref v)) _cfg.EspHealthBars = v;
+                rowY = _cursorY;
+                v = _cfg.EspBoxes; if (CheckboxAt("Bounding box", ref v, _x, half + Pad)) _cfg.EspBoxes = v;
+                _cursorY = rowY;
+                v = _cfg.EspHealthBars; if (CheckboxAt("Barra de vida", ref v, _x + Pad + half, half)) _cfg.EspHealthBars = v;
+                v = _cfg.EspWeakSpots; if (Checkbox("Pontos fracos (marcadores amarelos)", ref v)) _cfg.EspWeakSpots = v;
                 rowY = _cursorY;
                 v = _cfg.EspNames; if (CheckboxAt("Nome", ref v, _x, half + Pad)) _cfg.EspNames = v;
                 _cursorY = rowY;
@@ -150,6 +153,7 @@ public sealed class MenuSystem
 
             case 1: // Coletáveis
                 v = _cfg.EspCollectibles; if (Checkbox("Coletáveis e arenas de chefes", ref v)) _cfg.EspCollectibles = v;
+                v = _cfg.EspArrows; if (Checkbox("Flechas no chão (Arrow)", ref v)) _cfg.EspArrows = v;
                 v = _cfg.ShowCollectedCollectibles; if (Checkbox("Mostrar já coletados", ref v)) _cfg.ShowCollectedCollectibles = v;
                 float cdist = _cfg.CollectibleMaxDistanceMeters;
                 if (Slider("cdist", "Distância máx. coletáveis", ref cdist, 20f, 1000f, "{0:F0} m")) _cfg.CollectibleMaxDistanceMeters = cdist;
@@ -161,6 +165,7 @@ public sealed class MenuSystem
                 _cursorY = rowY;
                 v = _cfg.AimShowFov; if (CheckboxAt("Círculo de FOV", ref v, _x + Pad + half, half)) _cfg.AimShowFov = v;
                 v = _cfg.AimIgnoreTamed; if (Checkbox("Ignorar pets e buggies (domados)", ref v)) _cfg.AimIgnoreTamed = v;
+                v = _cfg.AimWeakSpots; if (Checkbox("Mirar no ponto fraco (se houver)", ref v)) _cfg.AimWeakSpots = v;
                 if (ButtonAt($"Tecla: {G2Overlay.Aim.AimAssist.KeyLabel(_cfg.AimKey)}  (clique para trocar)", _x + Pad, Width - Pad * 2))
                 {
                     var opts = G2Overlay.Aim.AimAssist.KeyOptions;
