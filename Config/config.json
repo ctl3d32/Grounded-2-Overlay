@@ -20,6 +20,7 @@
   "ApplyHealthMultipliers": true,
   "EspCollectibles": true,
   "EspArrows": true,
+  "EspDroplets": true,
   "CollectibleFilters": [
     "milkmolar",
     "milknugget",
@@ -41,7 +42,8 @@
     "recipe": "#FF8C1A",
     "uniquechest": "#B388FF",
     "bossmanager": "#FF5252",
-    "arrow": "#C8FF5A"
+    "arrow": "#C8FF5A",
+    "droplet": "#4FC3F7"
   },
   "CollectibleMaxDistanceMeters": 300,
   "CollectibleBoxExtent": 25,
@@ -57,5 +59,9 @@
   "LogLevel": "Info",
   "ConsoleLog": false,
   "MenuX": 40,
-  "MenuY": 80
+  "MenuY": 80,
+  "WeakSpotTerms": [
+    "weak",
+    "EyeCollision"
+  ]
 }

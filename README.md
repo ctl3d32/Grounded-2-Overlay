@@ -31,7 +31,7 @@ Requisitos: **Windows 10/11 x64** e **.NET 8 SDK** (`winget install Microsoft.Do
 Visual Studio 2022 (17.8+) é opcional.
 
 ```powershell
-cd "C:\Apps\G2Overlay"
+cd "C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay"
 dotnet build G2Overlay.sln -c Release
 ```
 
@@ -89,8 +89,9 @@ Na primeira execução, o overlay procura o dump mais recente (`*dump*.jsonl`) e
 | `AimMaxDistanceMeters` | 60 | alcance da mira |
 | `AimShowFov` / `AimTargetIncapacitated` | true / false | desenhar o círculo; mirar criaturas nocauteadas |
 | `AimWeakSpots` / `EspWeakSpots` | true / true | mirar no ponto fraco mais próximo da mira (se a criatura tiver); marcar pontos fracos no ESP |
-| `WeakSpotTerms` | `["weak"]` | termos no nome dos componentes que identificam pontos fracos (ex.: `LeftEyeWeakspot`) |
+| `WeakSpotTerms` | `["weak","EyeCollision"]` | termos no nome dos componentes que identificam pontos fracos (ex.: `LeftEyeWeakspot`; `LeftEyeCollision` do louva-a-deus) |
 | `AimIgnoreTamed` | true | não mirar pets e buggies domados (`TameState == Tame` ou classe `*_Buggy_*` / `*_Pet_*`) |
+| `EspDroplets` | true | gotas no chão (`BP_World_Droplet_*`: água, chuva, folha de grama, limão, refrigerante), **exceto** as que têm "Dirty" (água suja), em azul-claro — opção própria |
 | `EspArrows` | true | flechas no chão (`BP_World_Arrow_*`: Arrow, Mint, Poison, Spicy) em verde-limão — opção própria na aba Coletáveis |
 | `CollectibleItemTokens` | `["Key","Recipe"]` | palavras que precisam aparecer inteiras (entre `_`) no nome da classe de um **item no chão**: `BP_Key_CoaltanaMats_C`, `BP_Recipe_SpicyKatana_C` |
 | `CollectibleColors` | milk → `#00E5FF`, techchip → `#FF4FD8` | cor por termo |
@@ -102,6 +103,9 @@ Na primeira execução, o overlay procura o dump mais recente (`*dump*.jsonl`) e
 | `EntityScanIntervalMs` / `FullRevalidateIntervalMs` | 500 / 10000 | frequência do scan de atores |
 | `AutoImportDump` / `DumpSearchDirectories` | true / `[".","Claude_Test","Dumps"]` | atualização automática de offsets |
 | `LogLevel` / `ConsoleLog` | `Info` / false | logs |
+
+> **Editar o `config.json` com o overlay aberto:** as mudanças são detectadas em até 2 s e aplicadas na hora (o log mostra
+> `config.json recarregado`). O overlay nunca grava por cima de uma edição externa, nem ao sair.
 
 ## Documentação
 

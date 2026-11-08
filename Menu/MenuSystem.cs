@@ -154,6 +154,7 @@ public sealed class MenuSystem
             case 1: // Coletáveis
                 v = _cfg.EspCollectibles; if (Checkbox("Coletáveis e arenas de chefes", ref v)) _cfg.EspCollectibles = v;
                 v = _cfg.EspArrows; if (Checkbox("Flechas no chão (Arrow)", ref v)) _cfg.EspArrows = v;
+                v = _cfg.EspDroplets; if (Checkbox("Gotas (Droplet, exceto sujas)", ref v)) _cfg.EspDroplets = v;
                 v = _cfg.ShowCollectedCollectibles; if (Checkbox("Mostrar já coletados", ref v)) _cfg.ShowCollectedCollectibles = v;
                 float cdist = _cfg.CollectibleMaxDistanceMeters;
                 if (Slider("cdist", "Distância máx. coletáveis", ref cdist, 20f, 1000f, "{0:F0} m")) _cfg.CollectibleMaxDistanceMeters = cdist;

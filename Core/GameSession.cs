@@ -217,6 +217,8 @@ public sealed class GameSession : IDisposable
             Entities = new EntityManager(Mem, Objects, Names, Layout, World, _cfg);
             World.WorldChanged += (_, _) =>
             {
+                // Mundo novo: classes e atores são outros. Equivale ao botão "Recarregar" (sem reimportar offsets).
+                Objects.ClearCache();
                 Entities.Clear();
                 Cache.Clear();
             };

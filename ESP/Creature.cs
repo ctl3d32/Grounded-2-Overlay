@@ -30,6 +30,14 @@ public sealed class Creature
 
     /// <summary>Pontos fracos: componentes de cena com "weak" no nome (ex.: LeftEyeWeakspot, RightLegWeakpoint1).</summary>
     public ulong[] WeakSpots = Array.Empty<ulong>();
+
+    /// <summary>Posição do ator em Level.Actors no scan (nível, índice): muda se o endereço for reaproveitado.</summary>
+    public ulong ScanLevel;
+    public int ScanIndex;
+
+    /// <summary>Novas buscas de pontos fracos (componentes podem ser criados depois do spawn).</summary>
+    public int WeakSpotRetriesLeft = 5;
+    public long LastWeakSpotSearch;
     public string[] WeakSpotNames = Array.Empty<string>();
 
     // ---------------- dinâmicos (frame)

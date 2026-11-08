@@ -26,17 +26,44 @@ public sealed class EntityManager
 
     private readonly Dictionary<ulong, Creature> _creatures = new(256);
     private readonly Dictionary<ulong, Collectible> _collectibles = new(64);
-    private readonly Dictionary<ulong, string?> _classMatchCache = new(512);
+    // Versão dos filtros: o resultado do filtro de classe fica no próprio ClassInfo (ClassInfo.MatchVersion);
+    // mudar filtros/opções incrementa a versão e invalida todos de uma vez. Como o ClassInfo é recriado quando
+    // o endereço da classe é reaproveitado, um resultado antigo nunca vale para outra classe.
+    private int _filterVersion;
     private string[] _filters = Array.Empty<string>();
     private string[] _itemTokens = Array.Empty<string>();
 
     /// <summary>Categoria das flechas no chão (controlada por EspArrows, não por CollectibleFilters).</summary>
     public const string ArrowCategory = "arrow";
+
+    /// <summary>Categoria das gotas no chão (controlada por EspDroplets).</summary>
+    public const string DropletCategory = "droplet";
     private string _filtersKey = "";
     // Cache negativo: ator → instante (Stopwatch ticks) em que deve ser reclassificado.
     // Cada entrada expira num tempo aleatório entre 0,5× e 1,5× FullRevalidateIntervalMs, para que a
     // revalidação se espalhe pelos scans em vez de acontecer toda de uma vez (evita engasgos).
-    private readonly Dictionary<ulong, long> _nonCreatures = new(32768);
+    // Cada entrada guarda também a posição (nível + índice) em que o ator estava: se o mesmo endereço aparecer
+    // noutra posição, é um ator novo num endereço reaproveitado e é reclassificado na hora.
+    private readonly Dictionary<ulong, NegEntry> _nonCreatures = new(32768);
+
+    private readonly struct NegEntry
+    {
+        public readonly long Expires;
+        public readonly ulong Level;
+        public readonly int Index;
+
+        public NegEntry(long expires, ulong level, int index)
+        {
+            Expires = expires;
+            Level = level;
+            Index = index;
+        }
+    }
+
+    /// <summary>Tentativas extras de achar pontos fracos (os componentes podem não existir logo no spawn).</summary>
+    private const int WeakSpotRetries = 5;
+    private const double WeakSpotRetryMs = 2000;
+    private int _slotReuses;
     private readonly Random _rng = new();
     private bool _initialScanDone;
 
@@ -74,7 +101,7 @@ public sealed class EntityManager
     {
         _creatures.Clear();
         _collectibles.Clear();
-        _classMatchCache.Clear();
+        _filterVersion++;
         _nonCreatures.Clear();
         _initialScanDone = false;
         _lastScan = 0;
@@ -95,7 +122,7 @@ public sealed class EntityManager
             _lastFullRevalidate = now;
             _toRemove.Clear();
             foreach (var kv in _nonCreatures)
-                if (kv.Value < now) _toRemove.Add(kv.Key);
+                if (kv.Value.Expires < now) _toRemove.Add(kv.Key);
             foreach (var k in _toRemove) _nonCreatures.Remove(k);
             _toRemove.Clear();
         }
@@ -145,17 +172,37 @@ public sealed class EntityManager
             if (!_mem.ReadArray(arr.Data, span)) continue;
             actorTotal += arr.Num;
 
-            foreach (ulong actor in span)
+            for (int index = 0; index < span.Length; index++)
             {
+                ulong actor = span[index];
                 if (!ProcessMemory.IsValidObjectPointer(actor) || actor == _world.LocalPawn) continue;
-                if (_nonCreatures.TryGetValue(actor, out long expires) && expires > scanStart) continue;
+                if (_nonCreatures.TryGetValue(actor, out var neg))
+                {
+                    if (neg.Level == level && neg.Index == index)
+                    {
+                        if (neg.Expires > scanStart) continue;
+                    }
+                    else
+                    {
+                        // Mesmo endereço em outra posição: o ator antigo foi destruído e outro nasceu no lugar.
+                        _nonCreatures.Remove(actor);
+                        _slotReuses++;
+                    }
+                }
 
                 if (_creatures.TryGetValue(actor, out var existing))
                 {
-                    // Garante que o endereço não foi reaproveitado por outro objeto.
-                    if (_obj.GetClass(actor) == existing.ClassPtr)
+                    // Garante que o endereço não foi reaproveitado por outro objeto (mesma posição e mesma classe).
+                    if (existing.ScanLevel == level && existing.ScanIndex == index && _obj.GetClass(actor) == existing.ClassPtr)
                     {
                         _seen.Add(actor);
+                        if (existing.WeakSpots.Length == 0 && existing.WeakSpotRetriesLeft > 0 &&
+                            Stopwatch.GetElapsedTime(existing.LastWeakSpotSearch, scanStart).TotalMilliseconds >= WeakSpotRetryMs)
+                        {
+                            existing.WeakSpotRetriesLeft--;
+                            FindWeakSpots(existing, existing.Class);
+                        }
+
                         continue;
                     }
 
@@ -164,7 +211,8 @@ public sealed class EntityManager
 
                 if (_collectibles.TryGetValue(actor, out var existingCol))
                 {
-                    if ((_cfg.EspCollectibles || _cfg.EspArrows) && _obj.GetClass(actor) == existingCol.ClassPtr)
+                    if ((_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets) &&
+                        existingCol.ScanLevel == level && existingCol.ScanIndex == index && _obj.GetClass(actor) == existingCol.ClassPtr)
                     {
                         _seen.Add(actor);
                         continue;
@@ -186,16 +234,18 @@ public sealed class EntityManager
                 if (ci == null) continue; // leitura falhou: tenta no próximo scan
                 if (!ci.IsSurvivalCharacter)
                 {
-                    var col = (_cfg.EspCollectibles || _cfg.EspArrows) && ci.IsActor ? TryBuildCollectible(actor, cls, ci) : null;
+                    var col = (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets) && ci.IsActor ? TryBuildCollectible(actor, cls, ci) : null;
                     if (col != null)
                     {
+                        col.ScanLevel = level;
+                        col.ScanIndex = index;
                         _collectibles[actor] = col;
                         _seen.Add(actor);
                         addedCollectibles++;
                     }
                     else
                     {
-                        _nonCreatures[actor] = scanStart + NextExpiry();
+                        _nonCreatures[actor] = new NegEntry(scanStart + NextExpiry(), level, index);
                     }
 
                     continue;
@@ -203,6 +253,8 @@ public sealed class EntityManager
 
                 var c = Build(actor, cls, ci);
                 if (c == null) continue;
+                c.ScanLevel = level;
+                c.ScanIndex = index;
                 _creatures[actor] = c;
                 _seen.Add(actor);
                 added++;
@@ -232,7 +284,8 @@ public sealed class EntityManager
 
         if (_summaryLog.Allow())
             Logger.Info(Cat, $"Entidades: {_creatures.Count} criaturas ({VisibleCount} visíveis), {_collectibles.Count} coletáveis ({VisibleCollectibles} visíveis), {actorTotal} atores, {_levels.Count} níveis, " +
-                             $"cache negativo={_nonCreatures.Count}, classes={_obj.CachedClasses}, nomes={_names.CacheSize}, scan={LastScanMs:F1} ms.");
+                             $"cache negativo={_nonCreatures.Count}, classes={_obj.CachedClasses}, nomes={_names.CacheSize}, scan={LastScanMs:F1} ms; " +
+                             $"autocorreção: classes trocadas={_obj.StaleClassesDetected}, cadeias incompletas={_obj.IncompleteChains}, endereços reaproveitados={_slotReuses}.");
     }
 
     private Creature? Build(ulong actor, ulong cls, ClassInfo ci)
@@ -316,12 +369,13 @@ public sealed class EntityManager
 
     private void RefreshFilters()
     {
-        string key = string.Join("|", _cfg.CollectibleFilters) + "#" + string.Join("|", _cfg.CollectibleItemTokens);
+        string key = string.Join("|", _cfg.CollectibleFilters) + "#" + string.Join("|", _cfg.CollectibleItemTokens) +
+                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}";
         if (key == _filtersKey) return;
         _filtersKey = key;
         _filters = _cfg.CollectibleFilters.Select(ObjectReader.Normalize).Where(f => f.Length > 0).Distinct().ToArray();
         _itemTokens = _cfg.CollectibleItemTokens.Where(f => !string.IsNullOrWhiteSpace(f)).Select(f => f.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-        _classMatchCache.Clear();
+        _filterVersion++;
         _nonCreatures.Clear();
         Logger.Info(Cat, $"Filtros de coletáveis: {string.Join(", ", _filters)} · palavras de item: {string.Join(", ", _itemTokens)}");
     }
@@ -352,10 +406,11 @@ public sealed class EntityManager
     /// </summary>
     private Collectible? TryBuildCollectible(ulong actor, ulong cls, ClassInfo ci)
     {
-        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows) return null;
+        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets) return null;
 
         string? filter = null, matchedBy = null, rowName = "";
-        if (!_classMatchCache.TryGetValue(cls, out string? classFilter))
+        string? classFilter = ci.CollectibleMatch;
+        if (ci.MatchVersion != _filterVersion)
         {
             classFilter = null;
             foreach (var n in ci.Chain)
@@ -363,6 +418,14 @@ public sealed class EntityManager
                 if (n == "Actor") break;
                 classFilter = MatchFilter(ObjectReader.Normalize(n));
                 if (classFilter != null) break;
+            }
+
+            // Gotas no chão: classe com "Droplet" (só itens; exclui BP_DropletInstanceGroup_C) e sem "Dirty" na cadeia.
+            if (ci.IsSpawnedItem && classFilter == null &&
+                ci.Name.Contains("Droplet", StringComparison.OrdinalIgnoreCase) &&
+                !ci.Chain.Any(n => n.Contains("Dirty", StringComparison.OrdinalIgnoreCase)))
+            {
+                classFilter = DropletCategory;
             }
 
             // Flechas no chão: "Arrow" como palavra inteira (BP_World_Arrow_C, BP_World_Arrow_Mint_C…), só em itens.
@@ -390,7 +453,8 @@ public sealed class EntityManager
                 }
             }
 
-            _classMatchCache[cls] = classFilter;
+            ci.CollectibleMatch = classFilter;
+            ci.MatchVersion = _filterVersion;
             if (classFilter != null) Logger.Info(Cat, $"Classe coletável reconhecida ({classFilter}): {ci}");
         }
 
@@ -465,7 +529,13 @@ public sealed class EntityManager
         }
 
         string fallback = rowName.Length > 0 ? Collectible.Prettify(rowName) : ci.FriendlyName;
-        if (Array.IndexOf(ci.Chain, "BossManager") >= 0)
+        if (filter == DropletCategory)
+        {
+            // Segurança extra: o RowName do item também não pode conter "Dirty".
+            if (rowName.Contains("Dirty", StringComparison.OrdinalIgnoreCase)) return null;
+            c.Name = Collectible.DropletName(ci.Name);
+        }
+        else if (Array.IndexOf(ci.Chain, "BossManager") >= 0)
         {
             c.IsBossManager = true;
             c.Name = Collectible.BossName(ci.Name);
@@ -562,10 +632,14 @@ public sealed class EntityManager
             }
         }
 
+        c.LastWeakSpotSearch = Stopwatch.GetTimestamp();
+        if (found.Count == 0 && c.WeakSpots.Length == 0 && c.WeakSpotRetriesLeft < WeakSpotRetries) return; // nova tentativa sem nada novo
         c.WeakSpots = found.ToArray();
         c.WeakSpotNames = names.ToArray();
         c.WeakSpotPos = new FVector[found.Count];
         c.WeakSpotValid = new bool[found.Count];
+        if (found.Count > 0 && c.WeakSpotRetriesLeft < WeakSpotRetries)
+            Logger.Debug(Cat, $"Pontos fracos de {ci.Name} encontrados numa nova tentativa: {string.Join(", ", names)}");
 
         if (_weakSpotClassLogged.Add(c.ClassPtr))
         {
@@ -712,7 +786,13 @@ public sealed class EntityManager
         foreach (var c in _collectibles.Values)
         {
             c.Visible = false;
-            if (!(c.Filter == ArrowCategory ? _cfg.EspArrows : _cfg.EspCollectibles)) continue;
+            bool enabled = c.Filter switch
+            {
+                ArrowCategory => _cfg.EspArrows,
+                DropletCategory => _cfg.EspDroplets,
+                _ => _cfg.EspCollectibles,
+            };
+            if (!enabled) continue;
 
             c.Location = ReadLocation(c.RootComponent);
             if (!c.Location.IsFinite || c.Location.IsZero) continue;

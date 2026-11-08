@@ -120,6 +120,24 @@ blueprints novos que o jogo adicionar em patches. Ao criar cada criatura, o `Hea
 (a classe precisa derivar de `HealthComponent`): se não derivar, os offsets estão desatualizados e o problema
 aparece no log.
 
+**Autocorreção dos caches (sem precisar de "Recarregar").** Durante o streaming de níveis o jogo descarrega e
+recarrega classes e atores, e endereços liberados são reaproveitados por objetos diferentes. Antes, um cache
+indexado por endereço podia ficar apontando para a classe antiga até o botão Recarregar. Agora:
+
+| Mecanismo | O que evita |
+|---|---|
+| `ClassInfo` guarda o `FName` e o `SuperStruct` da classe; a cada 1 s de uso eles são relidos (2 leituras) e, se mudaram, a cadeia é refeita | classe nova no endereço de uma classe descarregada herdando o resultado antigo |
+| cadeias que não terminam em `Object` não entram no cache | leitura que falhou no meio marcando a classe como "não é ator" para sempre |
+| entradas do cache de classes vencem após 5 min | rede de segurança para qualquer caso não previsto |
+| resultado do filtro de coletáveis guardado no próprio `ClassInfo`, com número de versão dos filtros | resultado de uma classe antiga valendo para outra |
+| cache negativo, criaturas e coletáveis guardam a posição (nível, índice) em `Level.Actors`; mudou → reclassifica na hora | ator novo nascendo num endereço reaproveitado e sendo ignorado até a expiração |
+| criatura sem ponto fraco tenta de novo até 5 vezes, a cada 2 s | componentes criados depois do spawn |
+| troca de `UWorld` limpa também o cache de classes | mundo novo herdando classes do anterior |
+
+O resumo periódico do log mostra os contadores: `autocorreção: classes trocadas=…, cadeias incompletas=…,
+endereços reaproveitados=…`. O botão **Recarregar** continua existindo (reimporta offsets e refaz as validações
+de layout), mas não deve mais ser necessário durante o jogo.
+
 **Vida.** `Vida = MaxHealth × (NG+ × modo personalizado × propriedade) − CurrentDamage`, limitada a [0, Max].
 Os multiplicadores fora de (0,01; 100) são tratados como 1. A opção `ApplyHealthMultipliers` permite desligar.
 

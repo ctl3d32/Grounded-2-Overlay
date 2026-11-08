@@ -64,6 +64,7 @@ Para mais detalhe, rode com `G2Overlay.exe --debug`.
 - [ ] Pés/sementes de limão-taiti (KeyLime) e a bancada de receitas **não** recebem caixa.
 - [ ] Perto de um baú enterrado: caixa **lilás** "Unique Chest (Ice Cart)" / "Unique Chest (Coaltana)"; depois de desenterrado, some (ou fica cinza com "Mostrar já coletados").
 - [ ] Flechas no chão: caixa **verde-limão** "Arrow" com "Flechas no chão (Arrow)" ligado, mesmo com "Coletáveis e arenas de chefes" desligado; somem ao serem recolhidas.
+- [ ] Gotas: caixa **azul-claro** "Droplet: Water" / "Droplet: Lemon Juice"… com "Gotas (Droplet, exceto sujas)" ligado; gotas de água suja (Dirty) **não** aparecem.
 - [ ] Arenas de chefes: caixa **vermelho-claro** "Boss: Tarantula" / "Boss: Centipede" / "Boss: Lizard" / "Boss: Subject V" no altar; durante a luta o rótulo mostra "(luta ativa)".
 - [ ] Se um coletável não aparecer: pare ao lado dele, aperte **F9** (ou o botão "Diagnóstico" do menu) e envie o log — as linhas `[Diag]` mostram classe, nome do objeto e RowNames de tudo num raio de 15 m.
 
@@ -102,6 +103,9 @@ Para mais detalhe, rode com `G2Overlay.exe --debug`.
 - [ ] Fechar o jogo com o overlay aberto: log `Processo do jogo … encerrado. Aguardando reconexão…`.
 - [ ] Abrir o jogo de novo: reconecta sozinho; desta vez `Globais carregadas do cache`.
 - [ ] Nenhuma exceção repetida no log durante 10 min de jogo.
+- [ ] Jogue 20–30 min andando por áreas diferentes **sem clicar em Recarregar**: criaturas e coletáveis continuam aparecendo ao chegar perto.
+- [ ] O resumo `[Entities]` mostra `autocorreção: classes trocadas=…, cadeias incompletas=…, endereços reaproveitados=…`; números acima de zero indicam que a correção automática agiu.
+- [ ] Se algo ainda sumir: anote o horário, aperte **F9** perto do objeto (antes de Recarregar) e envie o log.
 
 ## Desempenho (menu → Status, ou log `[Perf]`)
 

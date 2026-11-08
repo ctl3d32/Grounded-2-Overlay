@@ -40,6 +40,9 @@ public sealed class OverlayConfig
     /// <summary>Flechas no chão (BP_World_Arrow_*, itens "Arrow…"), categoria independente dos demais coletáveis.</summary>
     public bool EspArrows { get; set; } = true;
 
+    /// <summary>Gotas no chão (BP_World_Droplet_*: água, chuva, limão, refrigerante), exceto as sujas ("Dirty").</summary>
+    public bool EspDroplets { get; set; } = true;
+
     /// <summary>
     /// Termos procurados (sem diferenciar maiúsculas, ignorando "_" e espaços) no nome da classe do ator
     /// e no NodeData.RowName de HarvestNodes. Os Milk Molars do mundo são "BP_Milk_Nugget_*".
@@ -64,6 +67,7 @@ public sealed class OverlayConfig
         ["uniquechest"] = "#B388FF",
         ["bossmanager"] = "#FF5252",
         ["arrow"] = "#C8FF5A",
+        ["droplet"] = "#4FC3F7",
     };
     public string CollectibleColor { get; set; } = "#00E5FF";
 
@@ -113,7 +117,7 @@ public sealed class OverlayConfig
     public bool EspWeakSpots { get; set; } = true;
 
     /// <summary>Termos procurados no nome dos componentes da criatura para identificar pontos fracos.</summary>
-    public List<string> WeakSpotTerms { get; set; } = new() { "weak" };
+    public List<string> WeakSpotTerms { get; set; } = new() { "weak", "EyeCollision" };
 
     // ---------------- Desempenho
     public int EntityScanIntervalMs { get; set; } = 500;
@@ -152,6 +156,10 @@ public sealed class OverlayConfig
         WeakSpotTerms ??= new List<string>();
         WeakSpotTerms = WeakSpotTerms.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
         if (WeakSpotTerms.Count == 0) WeakSpotTerms.Add("weak");
+        // Louva-a-deus: olhos = LeftEyeCollision / RightEyeCollision (BoxComponent). Adicionado nesta versão.
+        if (!WeakSpotTerms.Any(t => t.Equals("EyeCollision", StringComparison.OrdinalIgnoreCase)) &&
+            !RemovedDefaultFilters.Any(f => f.Equals("EyeCollision", StringComparison.OrdinalIgnoreCase)))
+            WeakSpotTerms.Add("EyeCollision");
         CollectibleFilters = CollectibleFilters.Where(f => !string.IsNullOrWhiteSpace(f)).ToList();
         // Migração: "opticaldisk" (versão anterior) não existe no jogo — o item é o Tech Chip (BP_TechChip_Base_C).
         CollectibleFilters.RemoveAll(f => f.Equals("opticaldisk", StringComparison.OrdinalIgnoreCase));
@@ -186,6 +194,7 @@ public sealed class OverlayConfig
             CollectibleFilters.Add("bossmanager");
         CollectibleColors.TryAdd("bossmanager", "#FF5252");
         CollectibleColors.TryAdd("arrow", "#C8FF5A");
+        CollectibleColors.TryAdd("droplet", "#4FC3F7");
         if (BoxSource != "Mesh" && BoxSource != "Capsule") BoxSource = "Mesh";
         if (string.IsNullOrWhiteSpace(ProcessName)) ProcessName = "Grounded2Steam-Win64-Shipping";
     }
@@ -208,6 +217,22 @@ public static class ConfigManager
     public static string OffsetsPath => Path.Combine(ConfigDirectory, "offsets.json");
     public static string LogDirectory => Path.Combine(BaseDirectory, "logs");
 
+    /// <summary>Data de modificação do config.json quando foi lido/gravado pela última vez por este processo.</summary>
+    private static DateTime _knownWriteTimeUtc;
+
+    private static DateTime CurrentWriteTimeUtc()
+    {
+        try { return File.Exists(ConfigPath) ? File.GetLastWriteTimeUtc(ConfigPath) : DateTime.MinValue; }
+        catch { return DateTime.MinValue; }
+    }
+
+    /// <summary>True se o config.json foi alterado por outro programa (editor, outra instância) desde a última leitura/gravação.</summary>
+    public static bool ChangedExternally()
+    {
+        var t = CurrentWriteTimeUtc();
+        return t != DateTime.MinValue && t != _knownWriteTimeUtc;
+    }
+
     public static OverlayConfig Load()
     {
         Directory.CreateDirectory(ConfigDirectory);
@@ -215,8 +240,10 @@ public static class ConfigManager
         {
             if (File.Exists(ConfigPath))
             {
+                var stamp = CurrentWriteTimeUtc();
                 var cfg = JsonSerializer.Deserialize<OverlayConfig>(File.ReadAllText(ConfigPath), Json) ?? new OverlayConfig();
                 cfg.Sanitize();
+                _knownWriteTimeUtc = stamp;
                 return cfg;
             }
         }
@@ -231,17 +258,54 @@ public static class ConfigManager
         return def;
     }
 
-    public static void Save(OverlayConfig cfg)
+    /// <summary>
+    /// Grava a configuração. Se o arquivo foi editado fora do overlay desde a última leitura, NÃO sobrescreve:
+    /// recarrega a versão do disco em <paramref name="cfg"/> (a edição externa vence) e retorna false.
+    /// </summary>
+    public static bool Save(OverlayConfig cfg)
     {
         try
         {
+            if (ChangedExternally())
+            {
+                Logger.Warn(Cat, "config.json foi alterado fora do overlay; recarregando em vez de sobrescrever.");
+                ReloadInto(cfg);
+                return false;
+            }
+
             Directory.CreateDirectory(ConfigDirectory);
             File.WriteAllText(ConfigPath, JsonSerializer.Serialize(cfg, Json));
+            _knownWriteTimeUtc = CurrentWriteTimeUtc();
             Logger.Info(Cat, "config.json salvo.");
+            return true;
         }
         catch (Exception ex)
         {
             Logger.Error(Cat, "Falha ao salvar config.json.", ex);
+            return false;
+        }
+    }
+
+    /// <summary>Lê o config.json do disco e copia todos os valores para a instância em uso (referenciada por todo o overlay).</summary>
+    public static bool ReloadInto(OverlayConfig target)
+    {
+        try
+        {
+            var stamp = CurrentWriteTimeUtc();
+            var fresh = JsonSerializer.Deserialize<OverlayConfig>(File.ReadAllText(ConfigPath), Json);
+            if (fresh == null) return false;
+            fresh.Sanitize();
+            foreach (var p in typeof(OverlayConfig).GetProperties())
+                if (p.CanRead && p.CanWrite) p.SetValue(target, p.GetValue(fresh));
+            _knownWriteTimeUtc = stamp;
+            Logger.Info(Cat, $"config.json recarregado (termos de ponto fraco: {string.Join(", ", target.WeakSpotTerms)}).");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            // Arquivo pode estar sendo gravado pelo editor: tenta de novo na próxima verificação.
+            Logger.Warn(Cat, $"Não foi possível recarregar config.json agora: {ex.Message}");
+            return false;
         }
     }
 

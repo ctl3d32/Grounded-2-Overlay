@@ -18,6 +18,10 @@ public sealed class Collectible
     public string Filter = "";
     public string ColorHex = "#00E5FF";
 
+    /// <summary>Posição do ator em Level.Actors no scan (nível, índice): muda se o endereço for reaproveitado.</summary>
+    public ulong ScanLevel;
+    public int ScanIndex;
+
     // ---------------- dinâmicos (frame)
     public FVector Location;
     public double DistanceMeters;
@@ -61,6 +65,18 @@ public sealed class Collectible
             .ToList();
         string title = super ? "Super Tech Chip" : "Tech Chip";
         return parts.Count > 0 ? $"{title} ({string.Join(" · ", parts)})" : title;
+    }
+
+    /// <summary>"BP_World_Droplet_Water_Rain_C" → "Droplet: Water (Rain)"; "BP_World_Droplet_LemonJuice_C" → "Droplet: Lemon Juice".</summary>
+    public static string DropletName(string className)
+    {
+        const string marker = "Droplet_";
+        string name = className.EndsWith("_C", StringComparison.Ordinal) ? className[..^2] : className;
+        int i = name.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+        if (i < 0) return "Droplet";
+        var parts = name[(i + marker.Length)..].Split('_', StringSplitOptions.RemoveEmptyEntries).Select(Prettify).ToArray();
+        if (parts.Length == 0) return "Droplet";
+        return parts.Length == 1 ? $"Droplet: {parts[0]}" : $"Droplet: {parts[0]} ({string.Join(" ", parts.Skip(1))})";
     }
 
     /// <summary>"BP_BossManager_Centipede_C" → "Boss: Centipede"; "BP_BossManager_SubjectV_C" → "Boss: Subject V".</summary>

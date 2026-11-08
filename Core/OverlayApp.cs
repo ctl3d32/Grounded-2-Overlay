@@ -98,6 +98,7 @@ public sealed class OverlayApp : IDisposable
             if (!keepRunning) break;
 
             SamplePerformance();
+            WatchConfigFile();
             // Sem janela do jogo visível: 10 FPS bastam (economiza CPU).
             _limiter.EndFrameAndWait(_window.Visible ? _cfg.FpsLimit : 10);
         }
@@ -156,7 +157,7 @@ public sealed class OverlayApp : IDisposable
                 }
 
                 _esp.Draw(_renderer, session.Camera, session.Entities!.Creatures);
-                if (_cfg.EspCollectibles || _cfg.EspArrows) _esp.DrawCollectibles(_renderer, session.Camera, session.Entities.Collectibles);
+                if (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets) _esp.DrawCollectibles(_renderer, session.Camera, session.Entities.Collectibles);
 
                 // AimBot: só com a janela do JOGO em foco (não o overlay) e o menu fechado.
                 bool gameHasFocus = Native.GetForegroundWindow() == _monitor.GameWindow;
@@ -220,7 +221,7 @@ public sealed class OverlayApp : IDisposable
                 _status.Add(_aim.Target != null
                     ? $"AimBot: alvo '{_aim.Target.Name}' a {_aim.Target.DistanceMeters:F0} m"
                     : $"AimBot: pronto (segure {AimAssist.KeyLabel(_cfg.AimKey)})");
-            if (s.Entities != null && (_cfg.EspCollectibles || _cfg.EspArrows))
+            if (s.Entities != null && (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets))
                 _status.Add($"Coletáveis: {s.Entities.Collectibles.Count} rastreados · {_esp.CollectiblesDrawnLastFrame} na tela");
             _status.Add($"Layout: Actors {Ok(s.Layout.ActorsValidated)} · C2W {Ok(s.Layout.TransformValidated)} · Bounds {Ok(s.Layout.BoundsValidated)}");
             _status.Add($"Leituras/s: {_readsPerSec:F0}");
@@ -231,6 +232,20 @@ public sealed class OverlayApp : IDisposable
     }
 
     private static string Ok(bool v) => v ? "ok" : "…";
+
+    private readonly LogThrottle _configWatch = new(TimeSpan.FromSeconds(2));
+
+    /// <summary>
+    /// Edições no config.json com o overlay aberto são aplicadas na hora (e nunca sobrescritas ao sair).
+    /// Entidades são reconstruídas para que termos novos (ex.: WeakSpotTerms) valham para criaturas já detectadas.
+    /// </summary>
+    private void WatchConfigFile()
+    {
+        if (!_configWatch.Allow() || !ConfigManager.ChangedExternally()) return;
+        Logger.Info(Cat, "config.json alterado fora do overlay; aplicando.");
+        if (ConfigManager.ReloadInto(_cfg))
+            _monitor.Session?.Entities?.Clear();
+    }
 
     private void SamplePerformance()
     {

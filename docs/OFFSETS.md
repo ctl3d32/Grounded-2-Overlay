@@ -1,7 +1,9 @@
 # Offsets — Grounded 2 (UE 5.7, build Augusta-CL-3207493)
 
-Fonte primária: dump do SDK `Grounded2Steam-Win64-Shipping-dump-20261030-221514.jsonl`
-(`ue_version: 507`, 485.401 objetos, 9.064 classes, 7.684 structs, 2.696 enums, 0 erros).
+Fonte primária: dump do SDK `Grounded2Steam-Win64-Shipping-dump-20261108-175841.jsonl`
+(`ue_version: 507`, 629.200 objetos, 9.134 classes, 7.709 structs, 2.695 enums, 0 erros; mesma build do executável,
+`pe_hash C935E7990B27C000`). Os dumps anteriores (30/10 e o refeito em 03/11) têm exatamente os mesmos offsets e RVAs.
+O novo só traz mais blueprints carregados (ex.: escorpiões, louva-a-deus, abelha), o que ampliou a tabela de pontos fracos.
 
 Os offsets **refletidos** foram conferidos por script contra o dump: os 45 offsets refletidos dos 54 valores padrão do código
 (`UnrealSDK/Offsets.cs`) batem exatamente com o dump (0 divergências). Os **não refletidos** não aparecem
@@ -269,6 +271,14 @@ No jogo, os pontos fracos são **componentes de colisão do blueprint de cada cr
 |---|---|---|
 | `BP_Ant_C` (e derivadas: soldado, operária, buggy…) | `LeftEyeWeakspot`, `RightEyeWeakspot` | BoxComponent |
 | `BP_Ladybug_Augusta_C` | `LeftLegWeakpoint1/2`, `RightLegWeakpoint1/2` | BoxComponent |
+| `BP_Bee_C` | `LeftEyeWeakspot`, `RightEyeWeakspot` | BoxComponent |
+| `BP_Snail_Base_C` (caracóis) | `LeftEyeWeakPoint`, `RightEyeWeakPoint` | BoxComponent |
+| `BP_Scorpion_Adult_Northern_C`, `BP_Scorpion_Jr_Northern_C` | `TailWeakpoint`, `BackWeakpoint` | BoxComponent |
+
+Também confirmados em jogo (log de 08/11): `BP_Ant_HillWorker_C`, `BP_Ant_Soldier_Augusta_C`, `BP_Bee_C`, `BP_Snail_Big_C`.
+Entre as 41 classes de criatura carregadas no dump, as demais (pulgão, lagarta, barata, larva, ácaro, mosquito, aranhas,
+cupim, Subject V…) não têm componente de ponto fraco, então a mira vai no corpo delas. O louva-a-deus (`BP_PrayingMantis_C`) tem os olhos
+em `LeftEyeCollision`/`RightEyeCollision` (BoxComponent). Por isso `EyeCollision` faz parte dos termos padrão de `WeakSpotTerms`.
 
 O dump só contém os blueprints carregados no momento em que foi gerado. Por isso a detecção é feita **em tempo de execução**,
 para qualquer criatura:
@@ -295,3 +305,21 @@ Regra: "Arrow" como **palavra inteira** (entre `_`) do nome de uma classe da cad
 Isso exclui `ArrowComponent` (componente de editor), `…CenterNarrow…` (widget) e qualquer outro objeto que não seja item.
 Categoria própria (`EntityManager.ArrowCategory = "arrow"`), com opção independente `EspArrows`, que mostra as flechas
 mesmo com os demais coletáveis desligados. Cor: verde-limão (`CollectibleColors.arrow`).
+
+## Gotas — Droplet (exceto Dirty)
+
+Classes no dump (todas `… ► SpawnedItemDroplet ► SpawnedItem`):
+
+| Classe | No ESP |
+|---|---|
+| `BP_World_Droplet_Water_C` | sim — "Droplet: Water" |
+| `BP_World_Droplet_Water_Rain_C` | sim — "Droplet: Water (Rain)" |
+| `BP_World_Droplet_Water_GrassBlade_A_C` | sim — "Droplet: Water (Grass Blade A)" |
+| `BP_World_Droplet_LemonJuice_C` | sim — "Droplet: Lemon Juice" |
+| `BP_World_Droplet_Soda_Cola_C` | sim — "Droplet: Soda (Cola)" |
+| `BP_World_Droplet_Water_Dirty_C` | **não** (contém "Dirty") |
+| `BP_DropletInstanceGroup_C` | **não** (grupo de gotas instanciadas, não é `SpawnedItem`) |
+
+Regra: o ator deriva de `SpawnedItem`, o nome da classe contém "Droplet", nenhuma classe da cadeia contém "Dirty" e o RowName
+do item também não. Categoria própria (`DropletCategory = "droplet"`, opção `EspDroplets`), cor azul-claro. A gota some do ESP
+quando é bebida (o ator é destruído). Gotas distantes podem existir só como proxy (`ProxySpawnedItemDropletActor`) até o jogo carregá-las.
