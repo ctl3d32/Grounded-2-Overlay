@@ -31,7 +31,7 @@ Requisitos: **Windows 10/11 x64** e **.NET 8 SDK** (`winget install Microsoft.Do
 Visual Studio 2022 (17.8+) é opcional.
 
 ```powershell
-cd "C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay"
+cd "C:\Apps\G2Overlay"
 dotnet build G2Overlay.sln -c Release
 ```
 
