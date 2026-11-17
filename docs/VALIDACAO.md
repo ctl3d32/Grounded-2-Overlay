@@ -65,6 +65,7 @@ Para mais detalhe, rode com `G2Overlay.exe --debug`.
 - [ ] Perto de um baú enterrado: caixa **lilás** "Unique Chest (Ice Cart)" / "Unique Chest (Coaltana)"; depois de desenterrado, some (ou fica cinza com "Mostrar já coletados").
 - [ ] Flechas no chão: caixa **verde-limão** "Arrow" com "Flechas no chão (Arrow)" ligado, mesmo com "Coletáveis e arenas de chefes" desligado; somem ao serem recolhidas.
 - [ ] Gotas: caixa **azul-claro** "Droplet: Water" / "Droplet: Lemon Juice"… com "Gotas (Droplet, exceto sujas)" ligado; gotas de água suja (Dirty) **não** aparecem.
+- [ ] Raw Science: caixa **rosa** "Raw Science (+N)" com "Raw Science (com quantidade)" ligado; o N bate com a ciência recebida ao coletar; a caixa some depois de coletar. Log: `Classe coletável reconhecida (rawscience): BP_RawScience_…`.
 - [ ] Arenas de chefes: caixa **vermelho-claro** "Boss: Tarantula" / "Boss: Centipede" / "Boss: Lizard" / "Boss: Subject V" no altar; durante a luta o rótulo mostra "(luta ativa)".
 - [ ] Se um coletável não aparecer: pare ao lado dele, aperte **F9** (ou o botão "Diagnóstico" do menu) e envie o log — as linhas `[Diag]` mostram classe, nome do objeto e RowNames de tudo num raio de 15 m.
 

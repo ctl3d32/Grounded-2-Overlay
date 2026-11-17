@@ -24,7 +24,7 @@ Se tudo aparecer, não há nada a fazer.
 
 1. Com o jogo aberto num mundo, gere o dump do SDK com o mesmo dumper usado originalmente
    (saída `Grounded2Steam-Win64-Shipping-dump-AAAAMMDD-HHMMSS.jsonl`).
-2. Coloque o `.jsonl` em `Overlay\Claude_Test\`, `Overlay\Dumps\` ou ao lado do executável.
+2. Coloque o `.jsonl` em `G2Overlay\Claude_Test\`, `G2Overlay\Dumps\` ou ao lado do executável.
 3. Reinicie o overlay (ou clique em **Recarregar** no menu).
    O `OffsetBootstrap` encontra o dump mais novo, importa por nome os 36 offsets refletidos e regrava
    `Config/offsets.json`. Cada valor alterado aparece no log como `Offset atualizado: X 0x… → 0x…`.
@@ -40,8 +40,8 @@ já com os offsets herdados incluídos.
 Requer Python 3.8+ (sem bibliotecas extras):
 
 ```powershell
-cd "C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Overlay\tools"
-python sigtool.py "..\..\Grounded2Steam-Win64-Shipping.exe" "..\Claude_Test\<novo-dump>.jsonl" "..\Config\signatures.json"
+cd "C:\Users\ctl3d\OneDrive\Apps\G2Overlay\tools"
+python sigtool.py "C:\Apps\Hydra\Jogos\Grounded 2\Grounded 2\Augusta\Binaries\Win64\Grounded2Steam-Win64-Shipping.exe" "..\Claude_Test\<novo-dump>.jsonl" "..\Config\signatures.json"
 ```
 
 A ferramenta:

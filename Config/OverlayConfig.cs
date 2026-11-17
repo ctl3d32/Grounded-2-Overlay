@@ -43,6 +43,9 @@ public sealed class OverlayConfig
     /// <summary>Gotas no chão (BP_World_Droplet_*: água, chuva, limão, refrigerante), exceto as sujas ("Dirty").</summary>
     public bool EspDroplets { get; set; } = true;
 
+    /// <summary>Raw Science (BP_RawScience_*: ScienceCollectable), em rosa, com a quantidade de ciência.</summary>
+    public bool EspRawScience { get; set; } = true;
+
     /// <summary>
     /// Termos procurados (sem diferenciar maiúsculas, ignorando "_" e espaços) no nome da classe do ator
     /// e no NodeData.RowName de HarvestNodes. Os Milk Molars do mundo são "BP_Milk_Nugget_*".
@@ -68,6 +71,7 @@ public sealed class OverlayConfig
         ["bossmanager"] = "#FF5252",
         ["arrow"] = "#C8FF5A",
         ["droplet"] = "#4FC3F7",
+        ["rawscience"] = "#FF80AB",
     };
     public string CollectibleColor { get; set; } = "#00E5FF";
 
@@ -195,6 +199,7 @@ public sealed class OverlayConfig
         CollectibleColors.TryAdd("bossmanager", "#FF5252");
         CollectibleColors.TryAdd("arrow", "#C8FF5A");
         CollectibleColors.TryAdd("droplet", "#4FC3F7");
+        CollectibleColors.TryAdd("rawscience", "#FF80AB");
         if (BoxSource != "Mesh" && BoxSource != "Capsule") BoxSource = "Mesh";
         if (string.IsNullOrWhiteSpace(ProcessName)) ProcessName = "Grounded2Steam-Win64-Shipping";
     }

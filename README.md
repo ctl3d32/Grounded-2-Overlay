@@ -18,7 +18,7 @@ logs detalhados.
 | Renderização | Direct2D + DirectWrite (interop COM direto, sem NuGet), janela transparente, topmost, click-through |
 | Menu | translúcido, arrastável; INSERT mostra/oculta, END encerra; captura cliques só quando aberto |
 | AimBot | só criaturas (nunca jogadores), segurando uma tecla; FOV, suavização e altura do ponto de mira configuráveis; move o mouse via `SendInput` (sem escrever na memória do jogo) |
-| ESP de coletáveis | Milk Molars (`BP_Milk_Nugget_*`) em ciano, Tech Chips (`BP_TechChip_Base_C`) em magenta, Keys em amarelo, Recipes em laranja, Unique Chests enterrados em lilás, arenas de chefes (BossManager) em vermelho-claro; filtros e cores configuráveis |
+| ESP de coletáveis | Milk Molars (`BP_Milk_Nugget_*`) em ciano, Tech Chips (`BP_TechChip_Base_C`) em magenta, Keys em amarelo, Recipes em laranja, Unique Chests enterrados em lilás, arenas de chefes (BossManager) em vermelho-claro, Raw Science em rosa com a quantidade de ciência; filtros e cores configuráveis |
 | ESP | bounding box pela malha (ou cápsula), barra de vida 100% verde → 50% amarelo → 25% laranja → 10% vermelho, nome, distância, vida, time |
 | WorldToScreen | `CameraCachePrivate.POV` (Location/Rotation/FOV) com a matemática da engine |
 | Robustez | máquina de estados, reconexão, validação de cada global/offset, tratamento de exceções por frame |
@@ -31,7 +31,7 @@ Requisitos: **Windows 10/11 x64** e **.NET 8 SDK** (`winget install Microsoft.Do
 Visual Studio 2022 (17.8+) é opcional.
 
 ```powershell
-cd "C:\Apps\Overlay"
+cd "C:\Users\ctl3d\OneDrive\Apps\G2Overlay"
 dotnet build G2Overlay.sln -c Release
 ```
 
@@ -92,6 +92,7 @@ Na primeira execução, o overlay procura o dump mais recente (`*dump*.jsonl`) e
 | `WeakSpotTerms` | `["weak","EyeCollision"]` | termos no nome dos componentes que identificam pontos fracos (ex.: `LeftEyeWeakspot`; `LeftEyeCollision` do louva-a-deus) |
 | `AimIgnoreTamed` | true | não mirar pets e buggies domados (`TameState == Tame` ou classe `*_Buggy_*` / `*_Pet_*`) |
 | `EspDroplets` | true | gotas no chão (`BP_World_Droplet_*`: água, chuva, folha de grama, limão, refrigerante), **exceto** as que têm "Dirty" (água suja), em azul-claro — opção própria |
+| `EspRawScience` | true | Raw Science (`BP_RawScience_A_C`, `_B_C`, `_DefenseReward_*`, derivados de `ScienceCollectable`) em rosa, com a ciência que cada um dá: "Raw Science (+5)" — opção própria na aba Coletáveis. Só aparecem os que o jogo já carregou como ator completo (perto do jogador); os distantes existem apenas como versão leve (LOD), sem posição legível |
 | `EspArrows` | true | flechas no chão (`BP_World_Arrow_*`: Arrow, Mint, Poison, Spicy) em verde-limão — opção própria na aba Coletáveis |
 | `CollectibleItemTokens` | `["Key","Recipe"]` | palavras que precisam aparecer inteiras (entre `_`) no nome da classe de um **item no chão**: `BP_Key_CoaltanaMats_C`, `BP_Recipe_SpicyKatana_C` |
 | `CollectibleColors` | milk → `#00E5FF`, techchip → `#FF4FD8` | cor por termo |

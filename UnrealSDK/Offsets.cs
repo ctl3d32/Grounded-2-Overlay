@@ -80,6 +80,9 @@ public static class Off
     public static int HarvestNode_NodeData;
     public static int HarvestNode_HealthComponent;
     public static int MilkNugget_MolarType;
+    public static int ScienceCollectable_ScienceAmount;
+    public static int ScienceCollectable_LiteData;
+    public static int ScienceLiteData_ScienceAmount;
     public static int SpawnedItem_PlacedItemData;
     public static int SpawnedItem_Item;
     public static int Item_ItemDataRowHandle;
@@ -142,6 +145,9 @@ public static class Off
         new("HarvestNode.NodeData", "HarvestNode", "NodeData", 0x360, OffsetSource.Reflected, "FDataTableRowHandle (RowName = tipo do nó)"),
         new("HarvestNode.HealthComponent", "HarvestNode", "HealthComponent", 0x378, OffsetSource.Reflected, "UHealthComponent* (Dead = já quebrado/coletado)"),
         new("MilkNugget.EMolarTypeForTooltip", "BP_Milk_Nugget_Personal_C", "EMolarTypeForTooltip", 0x618, OffsetSource.Reflected, "ECollectibleType (2 Upgrade, 3 UpgradeParty, 4 UpgradeBuggy)"),
+        new("ScienceCollectable.ScienceAmount", "ScienceCollectable", "ScienceAmount", 0x358, OffsetSource.Reflected, "int32: ciência que o Raw Science dá ao ser coletado"),
+        new("ScienceCollectable.LiteData", "ScienceCollectable", "LiteData", 0x360, OffsetSource.Reflected, "UScienceCollectableLiteData* (valor padrão da classe)"),
+        new("ScienceCollectableLiteData.ScienceAmount", "ScienceCollectableLiteData", "ScienceAmount", 0x90, OffsetSource.Reflected, "int32: ciência padrão (usado se o do ator for 0)"),
         new("SpawnedItem.PlacedItemData", "SpawnedItem", "PlacedItemData", 0x4E0, OffsetSource.Reflected, "FDataTableRowHandle do item posicionado (RowName = item)"),
         new("SpawnedItem.Item", "SpawnedItem", "Item", 0x548, OffsetSource.Reflected, "UItem* do item no chão"),
         new("Item.ItemDataRowHandle", "Item", "ItemDataRowHandle", 0x168, OffsetSource.Reflected, "FDataTableRowHandle_NetCrc32 (RowName @+0x8 = item)"),
@@ -230,6 +236,9 @@ public static class Off
         HarvestNode_NodeData = Values["HarvestNode.NodeData"];
         HarvestNode_HealthComponent = Values["HarvestNode.HealthComponent"];
         MilkNugget_MolarType = Values["MilkNugget.EMolarTypeForTooltip"];
+        ScienceCollectable_ScienceAmount = Values["ScienceCollectable.ScienceAmount"];
+        ScienceCollectable_LiteData = Values["ScienceCollectable.LiteData"];
+        ScienceLiteData_ScienceAmount = Values["ScienceCollectableLiteData.ScienceAmount"];
         SpawnedItem_PlacedItemData = Values["SpawnedItem.PlacedItemData"];
         SpawnedItem_Item = Values["SpawnedItem.Item"];
         Item_ItemDataRowHandle = Values["Item.ItemDataRowHandle"];

@@ -38,6 +38,9 @@ public sealed class EntityManager
 
     /// <summary>Categoria das gotas no chão (controlada por EspDroplets).</summary>
     public const string DropletCategory = "droplet";
+
+    /// <summary>Raw Science (classes derivadas de ScienceCollectable; controlado por EspRawScience).</summary>
+    public const string RawScienceCategory = "rawscience";
     private string _filtersKey = "";
     // Cache negativo: ator → instante (Stopwatch ticks) em que deve ser reclassificado.
     // Cada entrada expira num tempo aleatório entre 0,5× e 1,5× FullRevalidateIntervalMs, para que a
@@ -211,7 +214,7 @@ public sealed class EntityManager
 
                 if (_collectibles.TryGetValue(actor, out var existingCol))
                 {
-                    if ((_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets) &&
+                    if ((_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience) &&
                         existingCol.ScanLevel == level && existingCol.ScanIndex == index && _obj.GetClass(actor) == existingCol.ClassPtr)
                     {
                         _seen.Add(actor);
@@ -234,7 +237,7 @@ public sealed class EntityManager
                 if (ci == null) continue; // leitura falhou: tenta no próximo scan
                 if (!ci.IsSurvivalCharacter)
                 {
-                    var col = (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets) && ci.IsActor ? TryBuildCollectible(actor, cls, ci) : null;
+                    var col = (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience) && ci.IsActor ? TryBuildCollectible(actor, cls, ci) : null;
                     if (col != null)
                     {
                         col.ScanLevel = level;
@@ -370,7 +373,7 @@ public sealed class EntityManager
     private void RefreshFilters()
     {
         string key = string.Join("|", _cfg.CollectibleFilters) + "#" + string.Join("|", _cfg.CollectibleItemTokens) +
-                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}";
+                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}{_cfg.EspRawScience}";
         if (key == _filtersKey) return;
         _filtersKey = key;
         _filters = _cfg.CollectibleFilters.Select(ObjectReader.Normalize).Where(f => f.Length > 0).Distinct().ToArray();
@@ -406,7 +409,7 @@ public sealed class EntityManager
     /// </summary>
     private Collectible? TryBuildCollectible(ulong actor, ulong cls, ClassInfo ci)
     {
-        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets) return null;
+        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets && !_cfg.EspRawScience) return null;
 
         string? filter = null, matchedBy = null, rowName = "";
         string? classFilter = ci.CollectibleMatch;
@@ -419,6 +422,10 @@ public sealed class EntityManager
                 classFilter = MatchFilter(ObjectReader.Normalize(n));
                 if (classFilter != null) break;
             }
+
+            // Raw Science: BP_RawScience_A_C / _B_C / _DefenseReward_* → ScienceCollectable → PlaceableActor.
+            if (Array.IndexOf(ci.Chain, "ScienceCollectable") >= 0)
+                classFilter = RawScienceCategory;
 
             // Gotas no chão: classe com "Droplet" (só itens; exclui BP_DropletInstanceGroup_C) e sem "Dirty" na cadeia.
             if (ci.IsSpawnedItem && classFilter == null &&
@@ -529,7 +536,12 @@ public sealed class EntityManager
         }
 
         string fallback = rowName.Length > 0 ? Collectible.Prettify(rowName) : ci.FriendlyName;
-        if (filter == DropletCategory)
+        if (filter == RawScienceCategory)
+        {
+            c.ScienceAmount = ReadScienceAmount(actor);
+            c.Name = c.ScienceAmount > 0 ? $"Raw Science (+{c.ScienceAmount})" : "Raw Science";
+        }
+        else if (filter == DropletCategory)
         {
             // Segurança extra: o RowName do item também não pode conter "Dirty".
             if (rowName.Contains("Dirty", StringComparison.OrdinalIgnoreCase)) return null;
@@ -560,6 +572,18 @@ public sealed class EntityManager
 
         Logger.Info(Cat, $"Novo coletável: '{c.Name}' [{ci.Name}] filtro='{filter}' por {matchedBy} row='{rowName}' actor=0x{actor:X}");
         return c;
+    }
+
+    /// <summary>ScienceCollectable.ScienceAmount do ator; se vier 0, o valor padrão em LiteData.</summary>
+    private int ReadScienceAmount(ulong actor)
+    {
+        static bool Plausible(int v) => v > 0 && v < 1_000_000;
+        if (_mem.TryRead(actor + (ulong)Off.ScienceCollectable_ScienceAmount, out int amount) && Plausible(amount)) return amount;
+        ulong lite = _mem.ReadPtr(actor + (ulong)Off.ScienceCollectable_LiteData);
+        if (ProcessMemory.IsValidObjectPointer(lite) &&
+            _mem.TryRead(lite + (ulong)Off.ScienceLiteData_ScienceAmount, out int liteAmount) && Plausible(liteAmount))
+            return liteAmount;
+        return 0;
     }
 
     private string ReadRowName(ulong fnameAddress)
@@ -790,6 +814,7 @@ public sealed class EntityManager
             {
                 ArrowCategory => _cfg.EspArrows,
                 DropletCategory => _cfg.EspDroplets,
+                RawScienceCategory => _cfg.EspRawScience,
                 _ => _cfg.EspCollectibles,
             };
             if (!enabled) continue;

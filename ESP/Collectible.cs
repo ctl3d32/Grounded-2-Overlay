@@ -29,6 +29,9 @@ public sealed class Collectible
 
     /// <summary>Arena de chefe (BossManager) — e se a luta está em andamento (bBossActive).</summary>
     public bool IsBossManager;
+
+    /// <summary>Raw Science: quantidade de ciência (ScienceCollectable.ScienceAmount); 0 = desconhecida.</summary>
+    public int ScienceAmount;
     public bool BossActive;
     public bool Visible;
 

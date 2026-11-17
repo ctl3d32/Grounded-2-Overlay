@@ -98,6 +98,9 @@ Criatura (ASurvivalCreature : ASurvivalCharacter : ACharacter : APawn : AActor)
 | `TeamComponent.TeamDataTable` | TeamComponent | TeamDataTable | `0xE0` | Dump (UPROPERTY) | FDataTableRowHandle (RowName = time/facção) |
 | `DataTableRowHandle.RowName` | DataTableRowHandle | RowName | `0x8` | Dump (UPROPERTY) | FName |
 | `HarvestNode.NodeData` | HarvestNode | NodeData | `0x360` | Dump (UPROPERTY) | FDataTableRowHandle (RowName = tipo do nó) |
+| `ScienceCollectable.ScienceAmount` | ScienceCollectable | ScienceAmount | `0x358` | Dump (UPROPERTY) | int32: ciência do Raw Science |
+| `ScienceCollectable.LiteData` | ScienceCollectable | LiteData | `0x360` | Dump (UPROPERTY) | UScienceCollectableLiteData* |
+| `ScienceCollectableLiteData.ScienceAmount` | ScienceCollectableLiteData | ScienceAmount | `0x90` | Dump (UPROPERTY) | int32: ciência padrão da classe (fallback) |
 | `HarvestNode.HealthComponent` | HarvestNode | HealthComponent | `0x378` | Dump (UPROPERTY) | UHealthComponent* (Dead = já quebrado/coletado) |
 | `MilkNugget.EMolarTypeForTooltip` | BP_Milk_Nugget_Personal_C | EMolarTypeForTooltip | `0x618` | Dump (UPROPERTY) | ECollectibleType (2 Upgrade, 3 UpgradeParty, 4 UpgradeBuggy) |
 | `SpawnedItem.PlacedItemData` | SpawnedItem | PlacedItemData | `0x4E0` | Dump (UPROPERTY) | FDataTableRowHandle do item posicionado (RowName = item) |
