@@ -108,6 +108,31 @@ public sealed class Collectible
             : "Unique Chest";
     }
 
+    /// <summary>
+    /// "Taming_EggAnt" → "Taming Egg: Ant"; "Hatching_Egg_Weevil" → "Hatching Egg: Weevil";
+    /// "BP_World_Hatchable_Ant_Red_Egg_C" → "Taming Egg: Ant Red".
+    /// </summary>
+    public static string EggName(string source)
+    {
+        string s = source;
+        if (s.StartsWith("BP_", StringComparison.Ordinal)) s = s[3..];
+        if (s.EndsWith("_C", StringComparison.Ordinal)) s = s[..^2];
+        bool hatching = s.Contains("Hatching", StringComparison.OrdinalIgnoreCase);
+        var skip = new[] { "Taming", "Hatching", "Egg", "TamingEgg", "HatchingEgg", "World", "Hatchable" };
+        var parts = new List<string>();
+        foreach (var raw in s.Split('_', StringSplitOptions.RemoveEmptyEntries))
+        {
+            string p = raw;
+            foreach (var pre in new[] { "TamingEgg", "HatchingEgg", "Egg" })
+                if (p.Length > pre.Length && p.StartsWith(pre, StringComparison.OrdinalIgnoreCase)) { p = p[pre.Length..]; break; }
+            if (skip.Any(k => k.Equals(p, StringComparison.OrdinalIgnoreCase))) continue;
+            parts.Add(Prettify(p));
+        }
+
+        string title = hatching ? "Hatching Egg" : "Taming Egg";
+        return parts.Count > 0 ? $"{title}: {string.Join(" ", parts)}" : title;
+    }
+
     /// <summary>Nome amigável a partir de ECollectibleType (EMolarTypeForTooltip).</summary>
     public static string MolarName(byte type, string fallback) => type switch
     {

@@ -37,6 +37,7 @@ public sealed class OverlayApp : IDisposable
     private int _consecutiveErrors;
     private bool _diagnosticRequested;
     private readonly AimAssist _aim;
+    private readonly AutoBlock _block;
 
     public OverlayApp(OverlayConfig cfg)
     {
@@ -44,6 +45,7 @@ public sealed class OverlayApp : IDisposable
         _menu = new MenuSystem(cfg);
         _esp = new EspRenderer(cfg);
         _aim = new AimAssist(cfg);
+        _block = new AutoBlock(cfg);
         _monitor = new GameStateMonitor(cfg);
     }
 
@@ -144,6 +146,7 @@ public sealed class OverlayApp : IDisposable
         _window.SetClickThrough(!_menu.IsOpen);
 
         _renderer.BeginFrame();
+        bool blockUpdated = false;
         try
         {
             // 2–4) Entidades, câmera e WorldToScreen
@@ -157,12 +160,19 @@ public sealed class OverlayApp : IDisposable
                 }
 
                 _esp.Draw(_renderer, session.Camera, session.Entities!.Creatures);
-                if (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience) _esp.DrawCollectibles(_renderer, session.Camera, session.Entities.Collectibles);
+                if (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience || _cfg.EspEggs) _esp.DrawCollectibles(_renderer, session.Camera, session.Entities.Collectibles);
 
                 // AimBot: só com a janela do JOGO em foco (não o overlay) e o menu fechado.
                 bool gameHasFocus = Native.GetForegroundWindow() == _monitor.GameWindow;
-                _aim.Update(session.Camera, session.Entities.Creatures, gameHasFocus, _menu.IsOpen);
+
+                // Bloqueio automático antes da mira: se a tecla de bloqueio for a mesma da mira, a tecla
+                // injetada não deve acionar o AimBot.
+                _block.Update(session, gameHasFocus, _menu.IsOpen);
+                blockUpdated = true;
+                bool aimAllowed = gameHasFocus && !(_block.Holding && _cfg.AimKey == _cfg.AutoBlockKey);
+                _aim.Update(session.Camera, session.Entities.Creatures, aimAllowed, _menu.IsOpen);
                 _aim.Draw(_renderer, session.Camera);
+                _block.Draw(_renderer, session.Camera);
             }
 
             // 6) Menu
@@ -173,6 +183,8 @@ public sealed class OverlayApp : IDisposable
         }
         finally
         {
+            // Sem leitura do jogo neste frame (menu do jogo, reconexão, ESP desligado): nunca deixa a tecla presa.
+            if (!blockUpdated) _block.Suspend();
             _renderer.EndFrame();
         }
 
@@ -221,7 +233,11 @@ public sealed class OverlayApp : IDisposable
                 _status.Add(_aim.Target != null
                     ? $"AimBot: alvo '{_aim.Target.Name}' a {_aim.Target.DistanceMeters:F0} m"
                     : $"AimBot: pronto (segure {AimAssist.KeyLabel(_cfg.AimKey)})");
-            if (s.Entities != null && (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience))
+            if (_cfg.AutoBlockEnabled)
+                _status.Add(!_block.MontageLayoutDetected
+                    ? "Bloqueio: aguardando 1º ataque (calibração)"
+                    : _block.Holding ? "Bloqueio: segurando" : $"Bloqueio: pronto (tecla {AutoBlock.KeyLabel(_cfg.AutoBlockKey)})");
+            if (s.Entities != null && (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience || _cfg.EspEggs))
                 _status.Add($"Coletáveis: {s.Entities.Collectibles.Count} rastreados · {_esp.CollectiblesDrawnLastFrame} na tela");
             _status.Add($"Layout: Actors {Ok(s.Layout.ActorsValidated)} · C2W {Ok(s.Layout.TransformValidated)} · Bounds {Ok(s.Layout.BoundsValidated)}");
             _status.Add($"Leituras/s: {_readsPerSec:F0}");
@@ -282,6 +298,7 @@ public sealed class OverlayApp : IDisposable
             // ignorado
         }
 
+        _block.Dispose();
         _monitor.Dispose();
         _renderer.Dispose();
         _window.Dispose();

@@ -46,6 +46,9 @@ public sealed class OverlayConfig
     /// <summary>Raw Science (BP_RawScience_*: ScienceCollectable), em rosa, com a quantidade de ciência.</summary>
     public bool EspRawScience { get; set; } = true;
 
+    /// <summary>Ovos para chocar/domar ("Taming Egg" / "Hatching Egg": BP_World_Hatchable_*, RowName Taming_Egg…).</summary>
+    public bool EspEggs { get; set; } = true;
+
     /// <summary>
     /// Termos procurados (sem diferenciar maiúsculas, ignorando "_" e espaços) no nome da classe do ator
     /// e no NodeData.RowName de HarvestNodes. Os Milk Molars do mundo são "BP_Milk_Nugget_*".
@@ -72,6 +75,7 @@ public sealed class OverlayConfig
         ["arrow"] = "#C8FF5A",
         ["droplet"] = "#4FC3F7",
         ["rawscience"] = "#FF80AB",
+        ["egg"] = "#F5DEB3",
     };
     public string CollectibleColor { get; set; } = "#00E5FF";
 
@@ -123,6 +127,31 @@ public sealed class OverlayConfig
     /// <summary>Termos procurados no nome dos componentes da criatura para identificar pontos fracos.</summary>
     public List<string> WeakSpotTerms { get; set; } = new() { "weak", "EyeCollision" };
 
+    // ---------------- Bloqueio automático (bloqueio perfeito)
+    /// <summary>Segura a tecla de bloqueio pouco antes do golpe de uma criatura que ataca o jogador.</summary>
+    public bool AutoBlockEnabled { get; set; } = false;
+
+    /// <summary>Tecla de bloqueio do jogo (código VK). 0x02 = botão direito.</summary>
+    public int AutoBlockKey { get; set; } = 0x02;
+
+    /// <summary>Distância máxima (m, da borda da criatura) para considerar um ataque.</summary>
+    public float AutoBlockMaxDistanceMeters { get; set; } = 8f;
+
+    /// <summary>Antecedência (ms) com que a tecla é pressionada antes do golpe. 0 = automático (metade da janela perfeita).</summary>
+    public int AutoBlockLeadMs { get; set; } = 0;
+
+    /// <summary>Quanto tempo (ms) a tecla continua segurada depois do golpe.</summary>
+    public int AutoBlockHoldMs { get; set; } = 250;
+
+    /// <summary>Ângulo (graus) para considerar que a criatura está virada para o jogador quando ela não informa o alvo.</summary>
+    public float AutoBlockFacingDegrees { get; set; } = 60f;
+
+    /// <summary>Ignorar ataques à distância (cuspes, projéteis).</summary>
+    public bool AutoBlockIgnoreRanged { get; set; } = true;
+
+    /// <summary>Mostrar aviso "Ataque de X em 0,30 s" / "BLOQUEANDO" no centro da tela.</summary>
+    public bool AutoBlockShowWarning { get; set; } = true;
+
     // ---------------- Desempenho
     public int EntityScanIntervalMs { get; set; } = 500;
     public int FullRevalidateIntervalMs { get; set; } = 10000;
@@ -157,6 +186,11 @@ public sealed class OverlayConfig
         AimHeight = Math.Clamp(AimHeight, 0f, 1f);
         AimMaxDistanceMeters = Math.Clamp(AimMaxDistanceMeters, 2f, 1000f);
         if (AimKey <= 0 || AimKey > 0xFE) AimKey = 0x02;
+        if (AutoBlockKey <= 0 || AutoBlockKey > 0xFE) AutoBlockKey = 0x02;
+        AutoBlockMaxDistanceMeters = Math.Clamp(AutoBlockMaxDistanceMeters, 1f, 50f);
+        AutoBlockLeadMs = Math.Clamp(AutoBlockLeadMs, 0, 1000);
+        AutoBlockHoldMs = Math.Clamp(AutoBlockHoldMs, 50, 2000);
+        AutoBlockFacingDegrees = Math.Clamp(AutoBlockFacingDegrees, 10f, 180f);
         WeakSpotTerms ??= new List<string>();
         WeakSpotTerms = WeakSpotTerms.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
         if (WeakSpotTerms.Count == 0) WeakSpotTerms.Add("weak");
@@ -200,6 +234,7 @@ public sealed class OverlayConfig
         CollectibleColors.TryAdd("arrow", "#C8FF5A");
         CollectibleColors.TryAdd("droplet", "#4FC3F7");
         CollectibleColors.TryAdd("rawscience", "#FF80AB");
+        CollectibleColors.TryAdd("egg", "#F5DEB3");
         if (BoxSource != "Mesh" && BoxSource != "Capsule") BoxSource = "Mesh";
         if (string.IsNullOrWhiteSpace(ProcessName)) ProcessName = "Grounded2Steam-Win64-Shipping";
     }

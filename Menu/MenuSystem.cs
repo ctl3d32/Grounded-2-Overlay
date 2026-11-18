@@ -19,7 +19,7 @@ public enum MenuAction
 /// </summary>
 public sealed class MenuSystem
 {
-    private const float Width = 380f;
+    private const float Width = 420f;
     private const float Pad = 12f;
     private const float RowH = 24f;
     private const float TitleH = 32f;
@@ -48,7 +48,7 @@ public sealed class MenuSystem
     private MenuAction _action;
     private float _measuredHeight;
     private int _tab;
-    private static readonly string[] TabNames = { "ESP", "Coletáveis", "AimBot", "Status" };
+    private static readonly string[] TabNames = { "ESP", "Coletáveis", "AimBot", "Defesa", "Status" };
 
     public bool IsOpen { get; set; }
     public bool Changed { get; private set; }
@@ -156,6 +156,7 @@ public sealed class MenuSystem
                 v = _cfg.EspArrows; if (Checkbox("Flechas no chão (Arrow)", ref v)) _cfg.EspArrows = v;
                 v = _cfg.EspDroplets; if (Checkbox("Gotas (Droplet, exceto sujas)", ref v)) _cfg.EspDroplets = v;
                 v = _cfg.EspRawScience; if (Checkbox("Raw Science (com quantidade)", ref v)) _cfg.EspRawScience = v;
+                v = _cfg.EspEggs; if (Checkbox("Ovos para chocar/domar (Hatching/Taming Egg)", ref v)) _cfg.EspEggs = v;
                 v = _cfg.ShowCollectedCollectibles; if (Checkbox("Mostrar já coletados", ref v)) _cfg.ShowCollectedCollectibles = v;
                 float cdist = _cfg.CollectibleMaxDistanceMeters;
                 if (Slider("cdist", "Distância máx. coletáveis", ref cdist, 20f, 1000f, "{0:F0} m")) _cfg.CollectibleMaxDistanceMeters = cdist;
@@ -185,6 +186,27 @@ public sealed class MenuSystem
                 if (Slider("aheight", "Altura do ponto de mira", ref aheight, 0f, 100f, "{0:F0}%")) _cfg.AimHeight = aheight / 100f;
                 float adist = _cfg.AimMaxDistanceMeters;
                 if (Slider("adist", "Distância máx. da mira", ref adist, 5f, 200f, "{0:F0} m")) _cfg.AimMaxDistanceMeters = adist;
+                break;
+
+            case 3: // Defesa (bloqueio automático)
+                v = _cfg.AutoBlockEnabled; if (Checkbox("Bloqueio perfeito automático", ref v)) _cfg.AutoBlockEnabled = v;
+                v = _cfg.AutoBlockShowWarning; if (Checkbox("Aviso de ataque na tela", ref v)) _cfg.AutoBlockShowWarning = v;
+                v = _cfg.AutoBlockIgnoreRanged; if (Checkbox("Ignorar ataques à distância", ref v)) _cfg.AutoBlockIgnoreRanged = v;
+                if (ButtonAt($"Tecla de bloqueio: {G2Overlay.Aim.AutoBlock.KeyLabel(_cfg.AutoBlockKey)}  (clique para trocar)", _x + Pad, Width - Pad * 2))
+                {
+                    var bopts = G2Overlay.Aim.AutoBlock.KeyOptions;
+                    int bidx = Array.FindIndex(bopts, o => o.Vk == _cfg.AutoBlockKey);
+                    _cfg.AutoBlockKey = bopts[(bidx + 1) % bopts.Length].Vk;
+                    Changed = true;
+                }
+
+                _cursorY += 32f;
+                float bdist = _cfg.AutoBlockMaxDistanceMeters;
+                if (Slider("bdist", "Distância máx. do atacante", ref bdist, 1f, 30f, "{0:F0} m")) _cfg.AutoBlockMaxDistanceMeters = bdist;
+                float blead = _cfg.AutoBlockLeadMs;
+                if (Slider("blead", "Antecedência (0 = automática)", ref blead, 0f, 500f, blead < 1f ? "auto" : "{0:F0} ms")) _cfg.AutoBlockLeadMs = (int)blead;
+                float bhold = _cfg.AutoBlockHoldMs;
+                if (Slider("bhold", "Segurar depois do golpe", ref bhold, 50f, 1000f, "{0:F0} ms")) _cfg.AutoBlockHoldMs = (int)bhold;
                 break;
 
             default: // Status

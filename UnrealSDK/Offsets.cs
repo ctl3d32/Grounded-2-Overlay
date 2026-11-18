@@ -80,6 +80,39 @@ public static class Off
     public static int HarvestNode_NodeData;
     public static int HarvestNode_HealthComponent;
     public static int MilkNugget_MolarType;
+    public static int SurvivalCharacter_MotionWarpingAttackTarget;
+    public static int SurvivalCharacter_BlockComponent;
+    public static int SurvivalCharacter_CurrentAttackIsRanged;
+    public static int BlockComponent_PerfectBlockWindow;
+    public static int SkeletalMeshComponent_AnimScriptInstance;
+    public static int AnimInstance_MontageInstances;
+    public static int AnimMontageInstance_Montage;
+    public static int AnimMontageInstance_bPlaying;
+    public static int AnimMontageInstance_Position;
+    public static int AnimMontageInstance_PlayRate;
+    public static int AnimSequenceBase_Notifies;
+    public static int AnimSequenceBase_SequenceLength;
+    public static int AnimNotifyEvent_Size;
+    public static int AnimNotifyEvent_LinkMethod;
+    public static int AnimNotifyEvent_SegmentBeginTime;
+    public static int AnimNotifyEvent_SegmentLength;
+    public static int AnimNotifyEvent_LinkValue;
+    public static int AnimNotifyEvent_TriggerTimeOffset;
+    public static int AnimNotifyEvent_Notify;
+    public static int AnimNotifyEvent_NotifyStateClass;
+    public static int AnimNotifyEvent_Duration;
+    public static int AnimSequenceBase_RateScale;
+    public static int AnimMontage_SlotAnimTracks;
+    public static int SlotAnimationTrack_Size;
+    public static int SlotAnimationTrack_AnimTrack;
+    public static int AnimTrack_AnimSegments;
+    public static int AnimSegment_Size;
+    public static int AnimSegment_AnimReference;
+    public static int AnimSegment_StartPos;
+    public static int AnimSegment_AnimStartTime;
+    public static int AnimSegment_AnimEndTime;
+    public static int AnimSegment_AnimPlayRate;
+    public static int AnimSegment_LoopingCount;
     public static int ScienceCollectable_ScienceAmount;
     public static int ScienceCollectable_LiteData;
     public static int ScienceLiteData_ScienceAmount;
@@ -148,6 +181,40 @@ public static class Off
         new("ScienceCollectable.ScienceAmount", "ScienceCollectable", "ScienceAmount", 0x358, OffsetSource.Reflected, "int32: ciência que o Raw Science dá ao ser coletado"),
         new("ScienceCollectable.LiteData", "ScienceCollectable", "LiteData", 0x360, OffsetSource.Reflected, "UScienceCollectableLiteData* (valor padrão da classe)"),
         new("ScienceCollectableLiteData.ScienceAmount", "ScienceCollectableLiteData", "ScienceAmount", 0x90, OffsetSource.Reflected, "int32: ciência padrão (usado se o do ator for 0)"),
+        // Bloqueio automático: ataques de criaturas (montagem em execução + notifies de golpe)
+        new("SurvivalCharacter.MotionWarpingAttackTarget", "SurvivalCharacter", "MotionWarpingAttackTarget", 0x10D8, OffsetSource.Reflected, "ASurvivalCharacter* alvo do ataque atual (warp)"),
+        new("SurvivalCharacter.BlockComponent", "SurvivalCharacter", "BlockComponent", 0x13C0, OffsetSource.Reflected, "UBlockComponent*"),
+        new("SurvivalCharacter.CurrentAttackIsRanged", "SurvivalCharacter", "CurrentAttackIsRanged", 0x1C24, OffsetSource.Reflected, "bool: ataque atual é à distância"),
+        new("BlockComponent.PerfectBlockWindow", "BlockComponent", "PerfectBlockWindow", 0x14C, OffsetSource.Reflected, "float (s): janela do bloqueio perfeito"),
+        new("SkeletalMeshComponent.AnimScriptInstance", "SkeletalMeshComponent", "AnimScriptInstance", 0x918, OffsetSource.Reflected, "UAnimInstance*"),
+        new("AnimInstance.MontageInstances", "AnimInstance", null, 0x0, OffsetSource.RuntimeDetected, "TArray<FAnimMontageInstance*> (não refletido; detectado em runtime, 0 = ainda não detectado)"),
+        new("AnimMontageInstance.Montage", "AnimMontageInstance", "Montage", 0x0, OffsetSource.Reflected, "UAnimMontage*"),
+        new("AnimMontageInstance.bPlaying", "AnimMontageInstance", "bPlaying", 0x48, OffsetSource.Reflected, "bool"),
+        new("AnimMontageInstance.Position", "AnimMontageInstance", "position", 0x158, OffsetSource.Reflected, "float (s): posição atual na montagem"),
+        new("AnimMontageInstance.PlayRate", "AnimMontageInstance", "PlayRate", 0x15C, OffsetSource.Reflected, "float"),
+        new("AnimSequenceBase.Notifies", "AnimSequenceBase", "Notifies", 0x80, OffsetSource.Reflected, "TArray<FAnimNotifyEvent>"),
+        new("AnimSequenceBase.SequenceLength", "AnimSequenceBase", "SequenceLength", 0x90, OffsetSource.Reflected, "float (s)"),
+        new("AnimNotifyEvent.Size", "AnimNotifyEvent", null, 0xB8, OffsetSource.Engine, "sizeof(FAnimNotifyEvent) (dump: 184)"),
+        new("AnimNotifyEvent.LinkMethod", "AnimNotifyEvent", "LinkMethod", 0x18, OffsetSource.Reflected, "EAnimLinkMethod (0 Absolute, 1 Relative, 2 Proportional)"),
+        new("AnimNotifyEvent.SegmentBeginTime", "AnimNotifyEvent", "SegmentBeginTime", 0x1C, OffsetSource.Reflected, "float"),
+        new("AnimNotifyEvent.SegmentLength", "AnimNotifyEvent", "SegmentLength", 0x20, OffsetSource.Reflected, "float"),
+        new("AnimNotifyEvent.LinkValue", "AnimNotifyEvent", "LinkValue", 0x24, OffsetSource.Reflected, "float: instante do notify (Absolute)"),
+        new("AnimNotifyEvent.TriggerTimeOffset", "AnimNotifyEvent", "TriggerTimeOffset", 0x30, OffsetSource.Reflected, "float"),
+        new("AnimNotifyEvent.Notify", "AnimNotifyEvent", "Notify", 0x48, OffsetSource.Reflected, "UAnimNotify* (ex.: AnimNotify_HitFrame = golpe)"),
+        new("AnimNotifyEvent.NotifyStateClass", "AnimNotifyEvent", "NotifyStateClass", 0x50, OffsetSource.Reflected, "UAnimNotifyState* (ex.: AnimNotifyState_HitActive)"),
+        new("AnimNotifyEvent.Duration", "AnimNotifyEvent", "Duration", 0x58, OffsetSource.Reflected, "float"),
+        new("AnimSequenceBase.RateScale", "AnimSequenceBase", "RateScale", 0xA8, OffsetSource.Reflected, "float: velocidade própria da animação"),
+        new("AnimMontage.SlotAnimTracks", "AnimMontage", "SlotAnimTracks", 0x160, OffsetSource.Reflected, "TArray<FSlotAnimationTrack> (golpes ficam nas AnimSequences dos segmentos)"),
+        new("SlotAnimationTrack.Size", "SlotAnimationTrack", null, 0x18, OffsetSource.Engine, "sizeof(FSlotAnimationTrack) (dump: 24)"),
+        new("SlotAnimationTrack.AnimTrack", "SlotAnimationTrack", "AnimTrack", 0x8, OffsetSource.Reflected, "FAnimTrack"),
+        new("AnimTrack.AnimSegments", "AnimTrack", "AnimSegments", 0x0, OffsetSource.Reflected, "TArray<FAnimSegment>"),
+        new("AnimSegment.Size", "AnimSegment", null, 0x20, OffsetSource.Engine, "sizeof(FAnimSegment) (dump: 32)"),
+        new("AnimSegment.AnimReference", "AnimSegment", "AnimReference", 0x0, OffsetSource.Reflected, "UAnimSequenceBase*"),
+        new("AnimSegment.StartPos", "AnimSegment", "StartPos", 0x8, OffsetSource.Reflected, "float: início do segmento na montagem"),
+        new("AnimSegment.AnimStartTime", "AnimSegment", "AnimStartTime", 0xC, OffsetSource.Reflected, "float"),
+        new("AnimSegment.AnimEndTime", "AnimSegment", "AnimEndTime", 0x10, OffsetSource.Reflected, "float"),
+        new("AnimSegment.AnimPlayRate", "AnimSegment", "AnimPlayRate", 0x14, OffsetSource.Reflected, "float"),
+        new("AnimSegment.LoopingCount", "AnimSegment", "LoopingCount", 0x18, OffsetSource.Reflected, "int32"),
         new("SpawnedItem.PlacedItemData", "SpawnedItem", "PlacedItemData", 0x4E0, OffsetSource.Reflected, "FDataTableRowHandle do item posicionado (RowName = item)"),
         new("SpawnedItem.Item", "SpawnedItem", "Item", 0x548, OffsetSource.Reflected, "UItem* do item no chão"),
         new("Item.ItemDataRowHandle", "Item", "ItemDataRowHandle", 0x168, OffsetSource.Reflected, "FDataTableRowHandle_NetCrc32 (RowName @+0x8 = item)"),
@@ -236,6 +303,39 @@ public static class Off
         HarvestNode_NodeData = Values["HarvestNode.NodeData"];
         HarvestNode_HealthComponent = Values["HarvestNode.HealthComponent"];
         MilkNugget_MolarType = Values["MilkNugget.EMolarTypeForTooltip"];
+        SurvivalCharacter_MotionWarpingAttackTarget = Values["SurvivalCharacter.MotionWarpingAttackTarget"];
+        SurvivalCharacter_BlockComponent = Values["SurvivalCharacter.BlockComponent"];
+        SurvivalCharacter_CurrentAttackIsRanged = Values["SurvivalCharacter.CurrentAttackIsRanged"];
+        BlockComponent_PerfectBlockWindow = Values["BlockComponent.PerfectBlockWindow"];
+        SkeletalMeshComponent_AnimScriptInstance = Values["SkeletalMeshComponent.AnimScriptInstance"];
+        AnimInstance_MontageInstances = Values["AnimInstance.MontageInstances"];
+        AnimMontageInstance_Montage = Values["AnimMontageInstance.Montage"];
+        AnimMontageInstance_bPlaying = Values["AnimMontageInstance.bPlaying"];
+        AnimMontageInstance_Position = Values["AnimMontageInstance.Position"];
+        AnimMontageInstance_PlayRate = Values["AnimMontageInstance.PlayRate"];
+        AnimSequenceBase_Notifies = Values["AnimSequenceBase.Notifies"];
+        AnimSequenceBase_SequenceLength = Values["AnimSequenceBase.SequenceLength"];
+        AnimNotifyEvent_Size = Values["AnimNotifyEvent.Size"];
+        AnimNotifyEvent_LinkMethod = Values["AnimNotifyEvent.LinkMethod"];
+        AnimNotifyEvent_SegmentBeginTime = Values["AnimNotifyEvent.SegmentBeginTime"];
+        AnimNotifyEvent_SegmentLength = Values["AnimNotifyEvent.SegmentLength"];
+        AnimNotifyEvent_LinkValue = Values["AnimNotifyEvent.LinkValue"];
+        AnimNotifyEvent_TriggerTimeOffset = Values["AnimNotifyEvent.TriggerTimeOffset"];
+        AnimNotifyEvent_Notify = Values["AnimNotifyEvent.Notify"];
+        AnimNotifyEvent_NotifyStateClass = Values["AnimNotifyEvent.NotifyStateClass"];
+        AnimNotifyEvent_Duration = Values["AnimNotifyEvent.Duration"];
+        AnimSequenceBase_RateScale = Values["AnimSequenceBase.RateScale"];
+        AnimMontage_SlotAnimTracks = Values["AnimMontage.SlotAnimTracks"];
+        SlotAnimationTrack_Size = Values["SlotAnimationTrack.Size"];
+        SlotAnimationTrack_AnimTrack = Values["SlotAnimationTrack.AnimTrack"];
+        AnimTrack_AnimSegments = Values["AnimTrack.AnimSegments"];
+        AnimSegment_Size = Values["AnimSegment.Size"];
+        AnimSegment_AnimReference = Values["AnimSegment.AnimReference"];
+        AnimSegment_StartPos = Values["AnimSegment.StartPos"];
+        AnimSegment_AnimStartTime = Values["AnimSegment.AnimStartTime"];
+        AnimSegment_AnimEndTime = Values["AnimSegment.AnimEndTime"];
+        AnimSegment_AnimPlayRate = Values["AnimSegment.AnimPlayRate"];
+        AnimSegment_LoopingCount = Values["AnimSegment.LoopingCount"];
         ScienceCollectable_ScienceAmount = Values["ScienceCollectable.ScienceAmount"];
         ScienceCollectable_LiteData = Values["ScienceCollectable.LiteData"];
         ScienceLiteData_ScienceAmount = Values["ScienceCollectableLiteData.ScienceAmount"];

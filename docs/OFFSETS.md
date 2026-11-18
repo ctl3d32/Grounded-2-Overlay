@@ -101,6 +101,16 @@ Criatura (ASurvivalCreature : ASurvivalCharacter : ACharacter : APawn : AActor)
 | `ScienceCollectable.ScienceAmount` | ScienceCollectable | ScienceAmount | `0x358` | Dump (UPROPERTY) | int32: ciência do Raw Science |
 | `ScienceCollectable.LiteData` | ScienceCollectable | LiteData | `0x360` | Dump (UPROPERTY) | UScienceCollectableLiteData* |
 | `ScienceCollectableLiteData.ScienceAmount` | ScienceCollectableLiteData | ScienceAmount | `0x90` | Dump (UPROPERTY) | int32: ciência padrão da classe (fallback) |
+| `SurvivalCharacter.MotionWarpingAttackTarget` | SurvivalCharacter | MotionWarpingAttackTarget | `0x10D8` | Dump (UPROPERTY) | alvo do ataque atual |
+| `SurvivalCharacter.BlockComponent` | SurvivalCharacter | BlockComponent | `0x13C0` | Dump (UPROPERTY) | UBlockComponent* |
+| `SurvivalCharacter.CurrentAttackIsRanged` | SurvivalCharacter | CurrentAttackIsRanged | `0x1C24` | Dump (UPROPERTY) | bool |
+| `BlockComponent.PerfectBlockWindow` | BlockComponent | PerfectBlockWindow | `0x14C` | Dump (UPROPERTY) | float (s) |
+| `SkeletalMeshComponent.AnimScriptInstance` | SkeletalMeshComponent | AnimScriptInstance | `0x918` | Dump (UPROPERTY) | UAnimInstance* |
+| `AnimInstance.MontageInstances` | AnimInstance | — | runtime | Detectado em runtime | TArray<FAnimMontageInstance*> |
+| `AnimMontageInstance.Montage` / `bPlaying` / `Position` / `PlayRate` | AnimMontageInstance | Montage / bPlaying / position / PlayRate | `0x0` / `0x48` / `0x158` / `0x15C` | Dump (UPROPERTY) | montagem em execução |
+| `AnimSequenceBase.Notifies` / `SequenceLength` | AnimSequenceBase | Notifies / SequenceLength | `0x80` / `0x90` | Dump (UPROPERTY) | TArray<FAnimNotifyEvent> (0xB8 bytes cada) |
+| `AnimNotifyEvent.LinkMethod` / `SegmentBeginTime` / `SegmentLength` / `LinkValue` / `TriggerTimeOffset` | AnimNotifyEvent | idem | `0x18` / `0x1C` / `0x20` / `0x24` / `0x30` | Dump (UPROPERTY) | instante do notify |
+| `AnimNotifyEvent.Notify` / `NotifyStateClass` / `Duration` | AnimNotifyEvent | idem | `0x48` / `0x50` / `0x58` | Dump (UPROPERTY) | `AnimNotify_HitFrame` / `AnimNotifyState_HitActive` = golpe |
 | `HarvestNode.HealthComponent` | HarvestNode | HealthComponent | `0x378` | Dump (UPROPERTY) | UHealthComponent* (Dead = já quebrado/coletado) |
 | `MilkNugget.EMolarTypeForTooltip` | BP_Milk_Nugget_Personal_C | EMolarTypeForTooltip | `0x618` | Dump (UPROPERTY) | ECollectibleType (2 Upgrade, 3 UpgradeParty, 4 UpgradeBuggy) |
 | `SpawnedItem.PlacedItemData` | SpawnedItem | PlacedItemData | `0x4E0` | Dump (UPROPERTY) | FDataTableRowHandle do item posicionado (RowName = item) |

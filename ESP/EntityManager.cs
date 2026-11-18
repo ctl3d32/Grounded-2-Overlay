@@ -41,6 +41,17 @@ public sealed class EntityManager
 
     /// <summary>Raw Science (classes derivadas de ScienceCollectable; controlado por EspRawScience).</summary>
     public const string RawScienceCategory = "rawscience";
+
+    /// <summary>Ovos para chocar/domar (BP_World_Hatchable_*, RowName "Taming_Egg…" / "Hatching…Egg"; controlado por EspEggs).</summary>
+    public const string EggCategory = "egg";
+
+    /// <summary>"Taming_EggAnt" / "HatchingEgg_X" / "BP_World_Hatchable_Ant_Red_Egg_C" → é ovo de chocar/domar?</summary>
+    private static bool IsEggName(string s)
+    {
+        string n = ObjectReader.Normalize(s);
+        return n.Contains("tamingegg", StringComparison.Ordinal) || n.Contains("hatchingegg", StringComparison.Ordinal) ||
+               n.Contains("worldhatchable", StringComparison.Ordinal);
+    }
     private string _filtersKey = "";
     // Cache negativo: ator → instante (Stopwatch ticks) em que deve ser reclassificado.
     // Cada entrada expira num tempo aleatório entre 0,5× e 1,5× FullRevalidateIntervalMs, para que a
@@ -214,7 +225,7 @@ public sealed class EntityManager
 
                 if (_collectibles.TryGetValue(actor, out var existingCol))
                 {
-                    if ((_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience) &&
+                    if ((_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience || _cfg.EspEggs) &&
                         existingCol.ScanLevel == level && existingCol.ScanIndex == index && _obj.GetClass(actor) == existingCol.ClassPtr)
                     {
                         _seen.Add(actor);
@@ -237,7 +248,7 @@ public sealed class EntityManager
                 if (ci == null) continue; // leitura falhou: tenta no próximo scan
                 if (!ci.IsSurvivalCharacter)
                 {
-                    var col = (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience) && ci.IsActor ? TryBuildCollectible(actor, cls, ci) : null;
+                    var col = (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience || _cfg.EspEggs) && ci.IsActor ? TryBuildCollectible(actor, cls, ci) : null;
                     if (col != null)
                     {
                         col.ScanLevel = level;
@@ -373,7 +384,7 @@ public sealed class EntityManager
     private void RefreshFilters()
     {
         string key = string.Join("|", _cfg.CollectibleFilters) + "#" + string.Join("|", _cfg.CollectibleItemTokens) +
-                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}{_cfg.EspRawScience}";
+                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}{_cfg.EspRawScience}{_cfg.EspEggs}";
         if (key == _filtersKey) return;
         _filtersKey = key;
         _filters = _cfg.CollectibleFilters.Select(ObjectReader.Normalize).Where(f => f.Length > 0).Distinct().ToArray();
@@ -409,7 +420,7 @@ public sealed class EntityManager
     /// </summary>
     private Collectible? TryBuildCollectible(ulong actor, ulong cls, ClassInfo ci)
     {
-        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets && !_cfg.EspRawScience) return null;
+        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets && !_cfg.EspRawScience && !_cfg.EspEggs) return null;
 
         string? filter = null, matchedBy = null, rowName = "";
         string? classFilter = ci.CollectibleMatch;
@@ -426,6 +437,20 @@ public sealed class EntityManager
             // Raw Science: BP_RawScience_A_C / _B_C / _DefenseReward_* → ScienceCollectable → PlaceableActor.
             if (Array.IndexOf(ci.Chain, "ScienceCollectable") >= 0)
                 classFilter = RawScienceCategory;
+
+            // Ovos de chocar/domar: BP_World_Hatchable_Ant_Red_Egg_C → BP_World_Hatchable_C → BP_WorldItem_C.
+            if (classFilter == null && ci.IsSpawnedItem)
+            {
+                foreach (var n in ci.Chain)
+                {
+                    if (n == "BP_WorldItem_C" || n == "SpawnedItem") break;
+                    if (IsEggName(n))
+                    {
+                        classFilter = EggCategory;
+                        break;
+                    }
+                }
+            }
 
             // Gotas no chão: classe com "Droplet" (só itens; exclui BP_DropletInstanceGroup_C) e sem "Dirty" na cadeia.
             if (ci.IsSpawnedItem && classFilter == null &&
@@ -483,6 +508,7 @@ public sealed class EntityManager
         {
             rowName = ReadRowName(actor + (ulong)Off.SpawnedItem_PlacedItemData + (ulong)Off.DataTableRowHandle_RowName);
             filter = MatchFilter(ObjectReader.Normalize(rowName));
+            if (filter == null && IsEggName(rowName)) filter = EggCategory;
             if (filter != null)
             {
                 matchedBy = "SpawnedItem.PlacedItemData";
@@ -494,6 +520,7 @@ public sealed class EntityManager
                 {
                     string itemRow = ReadRowName(item + (ulong)Off.Item_ItemDataRowHandle + (ulong)Off.DataTableRowHandle_RowName);
                     filter = MatchFilter(ObjectReader.Normalize(itemRow));
+                    if (filter == null && IsEggName(itemRow)) filter = EggCategory;
                     if (filter != null)
                     {
                         rowName = itemRow;
@@ -536,7 +563,11 @@ public sealed class EntityManager
         }
 
         string fallback = rowName.Length > 0 ? Collectible.Prettify(rowName) : ci.FriendlyName;
-        if (filter == RawScienceCategory)
+        if (filter == EggCategory)
+        {
+            c.Name = Collectible.EggName(rowName.Length > 0 ? rowName : ci.Name);
+        }
+        else if (filter == RawScienceCategory)
         {
             c.ScienceAmount = ReadScienceAmount(actor);
             c.Name = c.ScienceAmount > 0 ? $"Raw Science (+{c.ScienceAmount})" : "Raw Science";
@@ -815,6 +846,7 @@ public sealed class EntityManager
                 ArrowCategory => _cfg.EspArrows,
                 DropletCategory => _cfg.EspDroplets,
                 RawScienceCategory => _cfg.EspRawScience,
+                EggCategory => _cfg.EspEggs,
                 _ => _cfg.EspCollectibles,
             };
             if (!enabled) continue;

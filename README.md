@@ -18,6 +18,7 @@ logs detalhados.
 | Renderização | Direct2D + DirectWrite (interop COM direto, sem NuGet), janela transparente, topmost, click-through |
 | Menu | translúcido, arrastável; INSERT mostra/oculta, END encerra; captura cliques só quando aberto |
 | AimBot | só criaturas (nunca jogadores), segurando uma tecla; FOV, suavização e altura do ponto de mira configuráveis; move o mouse via `SendInput` (sem escrever na memória do jogo) |
+| Bloqueio automático | aba **Defesa**: detecta o golpe de uma criatura que ataca o jogador (montagem de animação em execução + instante do `AnimNotify_HitFrame`) e segura a tecla de bloqueio pouco antes dele, para o bloqueio perfeito; tecla enviada por `SendInput` |
 | ESP de coletáveis | Milk Molars (`BP_Milk_Nugget_*`) em ciano, Tech Chips (`BP_TechChip_Base_C`) em magenta, Keys em amarelo, Recipes em laranja, Unique Chests enterrados em lilás, arenas de chefes (BossManager) em vermelho-claro, Raw Science em rosa com a quantidade de ciência; filtros e cores configuráveis |
 | ESP | bounding box pela malha (ou cápsula), barra de vida 100% verde → 50% amarelo → 25% laranja → 10% vermelho, nome, distância, vida, time |
 | WorldToScreen | `CameraCachePrivate.POV` (Location/Rotation/FOV) com a matemática da engine |
@@ -90,8 +91,16 @@ Na primeira execução, o overlay procura o dump mais recente (`*dump*.jsonl`) e
 | `AimShowFov` / `AimTargetIncapacitated` | true / false | desenhar o círculo; mirar criaturas nocauteadas |
 | `AimWeakSpots` / `EspWeakSpots` | true / true | mirar no ponto fraco mais próximo da mira (se a criatura tiver); marcar pontos fracos no ESP |
 | `WeakSpotTerms` | `["weak","EyeCollision"]` | termos no nome dos componentes que identificam pontos fracos (ex.: `LeftEyeWeakspot`; `LeftEyeCollision` do louva-a-deus) |
+| `AutoBlockEnabled` | false | bloqueio perfeito automático (aba Defesa) |
+| `AutoBlockKey` | 2 (botão direito) | tecla de bloqueio **do jogo** (menu alterna: botão direito, Mouse 4/5, meio, Q, F, Shift, Alt) |
+| `AutoBlockMaxDistanceMeters` | 8 | distância máxima do atacante (a partir da borda da criatura) |
+| `AutoBlockLeadMs` | 0 | antecedência do aperto antes do golpe; 0 = automática (metade da `PerfectBlockWindow` do jogador + 20 ms) |
+| `AutoBlockHoldMs` | 250 | quanto a tecla continua segurada depois do golpe (golpes seguidos dentro desse tempo mantêm a tecla) |
+| `AutoBlockFacingDegrees` | 60 | se a criatura não informa o alvo, ela precisa estar virada para você dentro desse ângulo |
+| `AutoBlockIgnoreRanged` / `AutoBlockShowWarning` | true / true | ignorar ataques à distância; aviso "Ataque de X em 0,30 s" / "BLOQUEANDO" |
 | `AimIgnoreTamed` | true | não mirar pets e buggies domados (`TameState == Tame` ou classe `*_Buggy_*` / `*_Pet_*`) |
 | `EspDroplets` | true | gotas no chão (`BP_World_Droplet_*`: água, chuva, folha de grama, limão, refrigerante), **exceto** as que têm "Dirty" (água suja), em azul-claro — opção própria |
+| `EspEggs` | true | ovos para chocar/domar ("Taming Egg" / "Hatching Egg": `BP_World_Hatchable_*`, RowName `Taming_Egg…`) em cor de trigo, com a espécie: "Taming Egg: Ant" — opção própria na aba Coletáveis |
 | `EspRawScience` | true | Raw Science (`BP_RawScience_A_C`, `_B_C`, `_DefenseReward_*`, derivados de `ScienceCollectable`) em rosa, com a ciência que cada um dá: "Raw Science (+5)" — opção própria na aba Coletáveis. Só aparecem os que o jogo já carregou como ator completo (perto do jogador); os distantes existem apenas como versão leve (LOD), sem posição legível |
 | `EspArrows` | true | flechas no chão (`BP_World_Arrow_*`: Arrow, Mint, Poison, Spicy) em verde-limão — opção própria na aba Coletáveis |
 | `CollectibleItemTokens` | `["Key","Recipe"]` | palavras que precisam aparecer inteiras (entre `_`) no nome da classe de um **item no chão**: `BP_Key_CoaltanaMats_C`, `BP_Recipe_SpicyKatana_C` |

@@ -181,3 +181,26 @@ SendInput(trunc(passo))                               (resto guardado para o pr�
 O erro é medido de novo a cada frame, então a mira converge com qualquer sensibilidade de mouse ou FOV, sem calibração.
 `AimSmoothing` maior deixa o movimento mais lento e suave; `AimGain` faz o ajuste fino. Se oscilar em volta do alvo,
 aumente `AimSmoothing` ou diminua `AimGain`.
+
+## Bloqueio automático (Aim/AutoBlock)
+
+1. Para cada criatura viva, não domada, a até `AutoBlockMaxDistanceMeters`: `Mesh → AnimScriptInstance → MontageInstances[]`.
+2. Para cada `FAnimMontageInstance` com `bPlaying`: `Montage`, `position`, `PlayRate`.
+3. Instantes dos golpes da montagem (cache por montagem/sequência, revalidado pelo FName): `Notifies[]` cujo `Notify`
+   deriva de `AnimNotify_HitFrame` ou cujo `NotifyStateClass` deriva de `AnimNotifyState_HitActive` / `_MultiHitFrame`;
+   tempo = `LinkValue` (ou relativo/proporcional, conforme `LinkMethod`) + `TriggerTimeOffset`. No Grounded 2 esses
+   notifies ficam nas **AnimSequences** (`AS_Mantis_Attack_R_Cleave_01`…) usadas pelos segmentos da montagem
+   (`AM_Mantis_Attack_CleaveRight`), não na montagem: percorre `SlotAnimTracks[].AnimTrack.AnimSegments[]` e converte
+   `tempo_montagem = StartPos + (tempo_seq − AnimStartTime) / (AnimPlayRate × RateScale)`.
+4. Tempo até o golpe = (instante − posição) / PlayRate. Alvo: `MotionWarpingAttackTarget == pawn local`; se vazio,
+   a criatura precisa estar virada para o jogador (forward do quaternion de `ComponentToWorld`). Outro alvo → ignora.
+4b. **Investidas** (abelha, vespa, joaninha): a montagem de carga fica num trecho em loop até a criatura chegar.
+   Se a criatura se aproxima a mais de 3 m/s (velocidade medida entre frames), o tempo até o golpe passa a ser o tempo
+   até o contato (distância ÷ velocidade), e a distância máxima vale para a posição prevista no contato.
+5. Quando o menor tempo ≤ antecedência (padrão: metade de `BlockComponent.PerfectBlockWindow` do jogador + 20 ms),
+   a tecla é pressionada (`SendInput`), e solta `AutoBlockHoldMs` depois do golpe. Golpes seguidos estendem o tempo.
+   Se você já está segurando a tecla, o overlay não interfere; sem foco/menu aberto/sem leitura do jogo, a tecla é solta.
+
+`UAnimInstance::MontageInstances` não é refletido: é detectado em runtime procurando um `TArray` cujo 1º elemento
+aponta para uma struct com `Montage` = `UAnimMontage` e posição/velocidade plausíveis (duas confirmações). A detecção
+acontece no primeiro ataque (seu ou de uma criatura); o log mostra `UAnimInstance.MontageInstances detectado em 0x…`.

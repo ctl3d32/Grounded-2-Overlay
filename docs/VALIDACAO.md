@@ -66,6 +66,7 @@ Para mais detalhe, rode com `G2Overlay.exe --debug`.
 - [ ] Flechas no chão: caixa **verde-limão** "Arrow" com "Flechas no chão (Arrow)" ligado, mesmo com "Coletáveis e arenas de chefes" desligado; somem ao serem recolhidas.
 - [ ] Gotas: caixa **azul-claro** "Droplet: Water" / "Droplet: Lemon Juice"… com "Gotas (Droplet, exceto sujas)" ligado; gotas de água suja (Dirty) **não** aparecem.
 - [ ] Raw Science: caixa **rosa** "Raw Science (+N)" com "Raw Science (com quantidade)" ligado; o N bate com a ciência recebida ao coletar; a caixa some depois de coletar. Log: `Classe coletável reconhecida (rawscience): BP_RawScience_…`.
+- [ ] Ovos: caixa **cor de trigo** "Taming Egg: Ant" perto de ovos de formiga vermelha (`BP_World_Hatchable_Ant_Red_Egg_C`, row `Taming_EggAnt`) com "Ovos para chocar/domar" ligado; ovos comuns de comida (`BP_World_Ant_Egg_C`) **não** aparecem.
 - [ ] Arenas de chefes: caixa **vermelho-claro** "Boss: Tarantula" / "Boss: Centipede" / "Boss: Lizard" / "Boss: Subject V" no altar; durante a luta o rótulo mostra "(luta ativa)".
 - [ ] Se um coletável não aparecer: pare ao lado dele, aperte **F9** (ou o botão "Diagnóstico" do menu) e envie o log — as linhas `[Diag]` mostram classe, nome do objeto e RowNames de tudo num raio de 15 m.
 
@@ -84,6 +85,16 @@ Para mais detalhe, rode com `G2Overlay.exe --debug`.
 - [ ] Com o menu aberto ou com outra janela em foco, o AimBot não mexe o mouse.
 - [ ] Se a câmera oscilar em volta do alvo: aumente "Suavização" (ou baixe `AimGain`). Se for lenta demais: o contrário.
 - [ ] Se a câmera não se mover: log `SendInput falhou`. Rode o overlay com o mesmo nível de privilégio do jogo.
+
+## Bloqueio automático (aba Defesa)
+
+- [ ] Ligue "Bloqueio perfeito automático" e confira se a **tecla de bloqueio** do menu é a mesma do jogo.
+- [ ] Ao atacar algo (ou ser atacado), o log mostra `UAnimInstance.MontageInstances detectado em 0x…`; antes disso o aviso diz "aguardando primeiro ataque para calibrar".
+- [ ] Perto de uma formiga/aranha atacando você: aparece "Ataque de … em 0,xx s" em laranja e um contorno laranja na criatura; no golpe, "BLOQUEANDO" em azul e o personagem bloqueia.
+- [ ] O jogo indica bloqueio perfeito (efeito/som de parry). Se bloquear tarde: aumente "Antecedência" (ex.: 150–200 ms); se bloquear cedo demais (bloqueio comum): diminua.
+- [ ] Criatura atacando seu pet ou outro jogador: nada acontece.
+- [ ] Abrir o menu, dar Alt-Tab ou desligar a opção durante um bloqueio solta a tecla na hora.
+- [ ] Com `--debug`, o log mostra `Montagem '…': golpes em 0.82s…` e `Bloqueio: '…' golpe em … ms`.
 
 ## Menu e entrada
 

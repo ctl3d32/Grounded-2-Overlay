@@ -278,7 +278,26 @@ public static unsafe class Native
     {
         [FieldOffset(0)] public uint type;
         [FieldOffset(8)] public MOUSEINPUT mi;
+        [FieldOffset(8)] public KEYBDINPUT ki;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct KEYBDINPUT
+    {
+        public ushort wVk;
+        public ushort wScan;
+        public uint dwFlags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+
+    public const uint INPUT_KEYBOARD = 1;
+    public const uint KEYEVENTF_KEYUP = 0x0002;
+    public const uint KEYEVENTF_SCANCODE = 0x0008;
+    public const uint KEYEVENTF_EXTENDEDKEY = 0x0001;
+
+    [DllImport("user32.dll")]
+    public static extern uint MapVirtualKeyW(uint code, uint mapType);
 
     [DllImport("user32.dll", SetLastError = true)]
     public static extern uint SendInput(uint count, INPUT* inputs, int size);
@@ -291,6 +310,40 @@ public static unsafe class Native
         input.mi.dx = dx;
         input.mi.dy = dy;
         input.mi.dwFlags = MOUSEEVENTF_MOVE;
+        return SendInput(1, &input, sizeof(INPUT)) == 1;
+    }
+
+    /// <summary>
+    /// Pressiona (down=true) ou solta uma tecla/botão pelo código VK: botões do mouse viram eventos de mouse,
+    /// o resto vira teclado por scan code (o que os jogos leem). Usado pelo bloqueio automático.
+    /// </summary>
+    public static bool SendKey(int vk, bool down)
+    {
+        INPUT input = default;
+        switch (vk)
+        {
+            case 0x01: return SendMouseButton(down ? 0x0002u : 0x0004u, 0);
+            case 0x02: return SendMouseButton(down ? 0x0008u : 0x0010u, 0);
+            case 0x04: return SendMouseButton(down ? 0x0020u : 0x0040u, 0);
+            case 0x05: return SendMouseButton(down ? 0x0080u : 0x0100u, 1);
+            case 0x06: return SendMouseButton(down ? 0x0080u : 0x0100u, 2);
+        }
+
+        input.type = INPUT_KEYBOARD;
+        input.ki.wVk = (ushort)vk;
+        input.ki.wScan = (ushort)MapVirtualKeyW((uint)vk, 0);
+        input.ki.dwFlags = KEYEVENTF_SCANCODE | (down ? 0u : KEYEVENTF_KEYUP);
+        if (vk is 0x2D or 0x2E or 0x24 or 0x23 or 0x21 or 0x22 or 0x25 or 0x26 or 0x27 or 0x28 or 0xA3 or 0xA5)
+            input.ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+        return SendInput(1, &input, sizeof(INPUT)) == 1;
+    }
+
+    private static bool SendMouseButton(uint flags, uint data)
+    {
+        INPUT input = default;
+        input.type = INPUT_MOUSE;
+        input.mi.dwFlags = flags;
+        input.mi.mouseData = data;
         return SendInput(1, &input, sizeof(INPUT)) == 1;
     }
 
