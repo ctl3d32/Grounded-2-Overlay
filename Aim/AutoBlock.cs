@@ -37,6 +37,7 @@ public sealed class AutoBlock : IDisposable
         public ulong NameRaw;
         public string Name = "";
         public float[] Hits = Array.Empty<float>();
+        public float[] Ends = Array.Empty<float>();
         public long CheckedAt;
         public float RateScale = 1f;
     }
@@ -81,6 +82,10 @@ public sealed class AutoBlock : IDisposable
         (0x46, "F"),
         (0x10, "Shift"),
         (0x12, "Alt"),
+        (0x11, "Ctrl"),
+        (0x20, "Espaço"),
+        (0x43, "C"),
+        (0x56, "V"),
     };
 
     public static string KeyLabel(int vk)
@@ -97,8 +102,12 @@ public sealed class AutoBlock : IDisposable
         if (!ReferenceEquals(session, _session))
         {
             Release("nova sessão");
+            ReleaseDodge();
+            _scanner.Reset();
+            _unblockableCache.Clear();
             _session = session;
             _montages.Clear();
+            _positions.Clear();
             _sequences.Clear();
             _animCache.Clear();
         }
@@ -111,6 +120,7 @@ public sealed class AutoBlock : IDisposable
         if (!_cfg.AutoBlockEnabled || !gameFocused || menuOpen || world == null || entities == null || world.LocalPawn == 0)
         {
             if (_holding) Release(!_cfg.AutoBlockEnabled ? "desativado" : "sem foco / menu aberto");
+            ReleaseDodge();
             if (!_cfg.AutoBlockEnabled) _enabledSince = 0;
             return;
         }
@@ -125,11 +135,17 @@ public sealed class AutoBlock : IDisposable
         }
 
         UpdatePerfectWindow(mem, pawn, now);
+        _attackers.Clear();
+        if (_cfg.AutoDodgeEnabled) _scanner.Step(session, 3000);
+        if (_dodgeKeyDown && now >= _dodgeUpAt) ReleaseDodge();
         if (!MontageLayoutDetected) TryDetectFrom(session, GetAnimInstance(mem, pawn, ReadMesh(mem, pawn), now), now);
 
         double best = double.MaxValue;
         Creature? bestC = null;
         bool bestCharge = false;
+        bool bestDodge = false;
+        double bestEnd = 0;
+        string bestMontage = "";
         foreach (var c in entities.Creatures)
         {
             if (c.IsPlayer || c.IsDead || c.IsIncapacitated || c.IsTamed) continue;
@@ -150,17 +166,52 @@ public sealed class AutoBlock : IDisposable
             }
 
             double closing = ClosingSpeed(c, me, now); // m/s em direção ao jogador (investidas, mergulhos)
-            double t = NextHitSeconds(session, anim, out bool attacking);
+            double t = NextHitSeconds(session, anim, out bool attacking, out string montageName, out double tEnd);
             if (!attacking) continue;
+            _rejectMontage = montageName;
+            if (_attackers.Count < 6) _attackers.Add($"{c.Name}/{montageName} golpe={(t < 0 ? "passou" : $"{t * 1000:F0}ms")} dist={distM:F1}m");
 
             // Investida (abelha, vespa, joaninha…): a criatura recua e dispara; a montagem fica em loop até ela chegar
             // (o instante do golpe na montagem pode até já ter passado). O golpe acontece no contato: usa o tempo até ele.
             // Se o golpe da montagem já passou, só uma arrancada rápida conta (evita bloquear quem só está andando).
-            bool charging = closing > (t < 0 ? FastChargeSpeedMps : ChargeSpeedMps) && distM > 0.5;
-            if (charging) t = Math.Max(0, distM - 0.3) / closing;
+            // Golpes com avanço (combos do grilo, saltos): a criatura se aproxima rápido, mas chega a tempo do golpe
+            // marcado na montagem — aí o instante da montagem é o certo. Só vale o tempo até o contato quando, no
+            // instante da montagem, ela ainda estaria longe (montagem em loop esperando a chegada) ou o golpe já passou.
+            bool charging = false;
+
+            // Janela de golpe longa (HitActive de 0,3 s ou mais — investida da joaninha: 2,00–4,00 s): o dano vem no
+            // CONTATO, em qualquer ponto da janela. Antes da janela, o golpe não vem antes do início nem do contato;
+            // dentro dela, o tempo até o golpe é o tempo até o contato (ou já, se estiver colada no jogador).
+            bool longWindow = t >= 0 && tEnd - t >= LongWindowSeconds;
+            if (longWindow)
+            {
+                double tContact = closing > 1.0 ? Math.Max(0, distM - 0.3) / closing
+                                : distM <= 0.5 ? 0
+                                : WarningSeconds + 1; // parada e longe: nada iminente
+                t = Math.Max(t, tContact);
+                charging = true; // hold curto em volta do contato, não a janela inteira
+            }
+            else if (distM > 0.5 && closing > (t < 0 ? FastChargeSpeedMps : ChargeSpeedMps))
+            {
+                double distAtHit = t < 0 ? double.MaxValue : distM - closing * t;
+                if (distAtHit > ReachToleranceMeters)
+                {
+                    charging = true;
+                    double tContact = Math.Max(0, distM - 0.3) / closing;
+                    // Com o golpe da montagem ainda à frente, vale o que vier PRIMEIRO: no salto do grilo a velocidade
+                    // medida fica abaixo da real (suavização), o contato parecia mais tarde que o golpe e a tecla
+                    // saía atrasada (76–83 ms). Na investida em loop da abelha, o tempo da montagem fica parado e o
+                    // contato decide.
+                    t = t < 0 ? tContact : Math.Min(t, tContact);
+                }
+            }
             if (t < 0) continue;
 
-            if (distM > _cfg.AutoBlockMaxDistanceMeters && !(charging && distM - closing * t <= _cfg.AutoBlockMaxDistanceMeters))
+            // Distância prevista no instante do golpe (saltos e investidas fecham a distância no caminho).
+            double distAtHitM = distM - Math.Max(0, closing) * t;
+            // Ataques que viajam até o jogador por baixo da terra (escorpião: Burrow) valem de qualquer distância lida.
+            bool homing = IsHomingAttack(montageName);
+            if (!homing && distM > _cfg.AutoBlockMaxDistanceMeters && distAtHitM > _cfg.AutoBlockMaxDistanceMeters)
             {
                 if (t <= WarningSeconds) LogRejected(c, $"fora da distância máxima ({distM:F1} m > {_cfg.AutoBlockMaxDistanceMeters:F0} m, aproximando a {closing:F1} m/s)", now);
                 continue;
@@ -173,7 +224,7 @@ public sealed class AutoBlock : IDisposable
                 continue;
             }
 
-            if (!IsTargetingMe(mem, c, pawn, me, out string why))
+            if (!IsTargetingMe(mem, c, pawn, me, montageName, out string why))
             {
                 LogRejected(c, why, now);
                 continue;
@@ -182,12 +233,38 @@ public sealed class AutoBlock : IDisposable
             best = t;
             bestC = c;
             bestCharge = charging;
+            bestDodge = _cfg.AutoDodgeEnabled && IsUnblockable(montageName);
+            bestEnd = charging ? t : Math.Max(t, tEnd);
+            bestMontage = charging ? "" : montageName;
         }
 
         if (bestC != null && best <= WarningSeconds)
         {
             Threat = bestC;
             ThreatSeconds = best;
+            _lastThreatForLog = bestC;
+        }
+
+        // O bloqueio só protege pela frente: vira a câmera para o atacante antes do golpe (opcional).
+        if (_cfg.AutoBlockTurnToAttacker && bestC != null && best <= TurnSeconds) TurnToward(session.Camera, bestC);
+        else _lastTurnPixels = 0;
+
+        ThreatIsDodge = bestDodge;
+        if (bestDodge && bestC != null)
+        {
+            // Ataque imbloqueável: esquiva perfeita em vez de bloqueio (a tecla de bloqueio fica solta).
+            double dodgeLead = _cfg.AutoDodgeLeadMs > 0 ? _cfg.AutoDodgeLeadMs / 1000.0 : _perfectDodgeWindow * 0.5 + 0.02;
+            if (best <= dodgeLead)
+            {
+                if (_holding) Release("ataque imbloqueável: esquiva");
+                if (!_dodgeKeyDown && Stopwatch.GetElapsedTime(_lastDodgeAt, now).TotalSeconds > DodgeCooldownSeconds)
+                    Dodge(bestC, best, now);
+            }
+
+            ReleaseIfDue(now);
+            WarnIfNotDetected(now);
+            WatchDamage(mem, pawn, now);
+            return;
         }
 
         double lead = _cfg.AutoBlockLeadMs > 0 ? _cfg.AutoBlockLeadMs / 1000.0 : _perfectWindow * 0.5 + 0.02;
@@ -197,18 +274,277 @@ public sealed class AutoBlock : IDisposable
             {
                 // Se o jogador já está segurando a tecla, não interfere.
                 _lastWasCharge = bestCharge;
-                if (!Native.IsKeyDown(_cfg.AutoBlockKey)) Press(bestC, best, now);
+                if (!Native.IsKeyDown(_cfg.AutoBlockKey))
+                {
+                    Press(bestC, best, now);
+                    if (_holding)
+                    {
+                        _pressMontage = bestMontage;
+                        _pressHitAt = now + Ticks(best);
+                    }
+                }
             }
 
             if (_holding)
             {
-                long until = now + Ticks(best + _cfg.AutoBlockHoldMs / 1000.0);
-                if (until > _releaseAt) _releaseAt = until;
+                // A janela perfeita conta do instante em que o bloqueio começa. Se a tecla já está segurada há tempo
+                // demais (golpe anterior, outra criatura), no impacto seria só um bloqueio comum: solta agora e
+                // aperta de novo no próximo frame para renovar a janela.
+                double heldAtHit = Stopwatch.GetElapsedTime(_pressedAt, now).TotalSeconds + best;
+                if (heldAtHit > _perfectWindow && best >= MinRepressSeconds)
+                {
+                    Release($"renovar janela perfeita: '{bestC.Name}' golpe em {best * 1000:F0} ms");
+                }
+                else
+                {
+                    // Janelas de golpe (HitActive) mantêm a tecla até o fim da janela.
+                    long until = now + Ticks(Math.Max(best, bestEnd) + _cfg.AutoBlockHoldMs / 1000.0);
+                    if (until > _releaseAt) _releaseAt = until;
+                }
             }
         }
 
         ReleaseIfDue(now);
         WarnIfNotDetected(now);
+        WatchDamage(mem, pawn, now);
+    }
+
+    // ================================================================== esquiva (ataques imbloqueáveis)
+
+    private const double DodgeCooldownSeconds = 0.6;
+    private const double DodgeTapSeconds = 0.05;
+    private readonly UnblockableScanner _scanner = new();
+    private readonly Dictionary<string, bool> _unblockableCache = new();
+    private int _unblockableVersion = -1;
+    private bool _dodgeKeyDown;
+    private long _dodgeUpAt;
+    private long _lastDodgeAt;
+    private float _perfectDodgeWindow = 0.2f;
+    private int _dodges;
+
+    /// <summary>O próximo golpe é imbloqueável e será esquivado (aviso na tela).</summary>
+    public bool ThreatIsDodge { get; private set; }
+
+    /// <summary>Montagem de ataque imbloqueável: lista manual (AutoDodgeMontages) ou tipo de dano lido do jogo.</summary>
+    private bool IsUnblockable(string montage)
+    {
+        if (montage.Length == 0) return false;
+        if (_unblockableVersion != _scanner.Version)
+        {
+            _unblockableCache.Clear();
+            _unblockableVersion = _scanner.Version;
+        }
+
+        if (_unblockableCache.TryGetValue(montage, out bool v)) return v;
+        string source = "";
+        foreach (var term in _cfg.AutoDodgeMontages)
+        {
+            if (term.Length > 0 && montage.Contains(term, StringComparison.OrdinalIgnoreCase))
+            {
+                source = $"lista AutoDodgeMontages ('{term}')";
+                break;
+            }
+        }
+
+        if (source.Length == 0 && _scanner.MatchesMontage(montage, out string dmg)) source = $"tipo de dano {dmg}";
+        v = source.Length > 0;
+        _unblockableCache[montage] = v;
+        if (v) Logger.Info(Cat, $"Ataque imbloqueável: '{montage}' ({source}) → esquiva automática.");
+        return v;
+    }
+
+    private void Dodge(Creature c, double t, long now)
+    {
+        if (!Native.SendKey(_cfg.AutoDodgeKey, true))
+        {
+            if (_sendLog.Allow()) Logger.Warn(Cat, "SendInput falhou ao esquivar.");
+            return;
+        }
+
+        _dodgeKeyDown = true;
+        _dodgeUpAt = now + Ticks(DodgeTapSeconds);
+        _lastDodgeAt = now;
+        _dodges++;
+        Logger.Debug(Cat, $"Esquiva: '{c.Name}' golpe em {t * 1000:F0} ms (janela perfeita {_perfectDodgeWindow * 1000:F0} ms, tecla {AutoBlock.KeyLabel(_cfg.AutoDodgeKey)}).");
+    }
+
+    private void ReleaseDodge()
+    {
+        if (!_dodgeKeyDown) return;
+        _dodgeKeyDown = false;
+        Native.SendKey(_cfg.AutoDodgeKey, false);
+    }
+
+    // ================================================================== diagnóstico de dano
+
+    private readonly List<string> _attackers = new(8);
+    private Creature? _lastThreatForLog;
+    private float _lastDamage = float.NaN;
+    private long _lastReleaseAt;
+
+    /// <summary>
+    /// Quando a vida do jogador cai, registra o que estava acontecendo: tecla segurada ou não, há quanto tempo foi
+    /// apertada/solta e quais criaturas estavam no meio de um ataque. É o que mostra qual golpe escapou e por quê.
+    /// </summary>
+    private void WatchDamage(ProcessMemory mem, ulong pawn, long now)
+    {
+        ulong hc = mem.ReadPtr(pawn + (ulong)Off.SurvivalCharacter_HealthComponent);
+        if (!ProcessMemory.IsValidObjectPointer(hc) || !mem.TryRead(hc + (ulong)Off.HealthComponent_CurrentDamage, out float dmg) || !float.IsFinite(dmg))
+            return;
+        if (float.IsNaN(_lastDamage) || dmg < _lastDamage - 0.01f)
+        {
+            _lastDamage = dmg; // primeira leitura ou cura
+            return;
+        }
+
+        float delta = dmg - _lastDamage;
+        _lastDamage = dmg;
+        if (delta < 0.5f) return;
+
+        string key = _holding
+            ? $"segurando há {Stopwatch.GetElapsedTime(_pressedAt, now).TotalMilliseconds:F0} ms"
+            : _lastReleaseAt != 0 ? $"solta há {Stopwatch.GetElapsedTime(_lastReleaseAt, now).TotalMilliseconds:F0} ms" : "nunca apertada";
+        string who = _attackers.Count > 0 ? string.Join("; ", _attackers) : "nenhuma criatura em ataque detectada";
+        string facing = "";
+        var cam = _session?.Camera;
+        var threat = Threat ?? _lastThreatForLog;
+        if (cam != null && cam.IsValid && threat != null)
+            facing = $" · atacante a {Math.Abs(YawError(cam, threat.Location)):F0}° da direção da câmera";
+        // O próprio jogo diz o tipo de dano e se houve bloqueio (FDamageInfo.BlockType).
+        string dmgType = "?";
+        byte blockType = 255;
+        ulong info = hc + (ulong)Off.HealthComponent_LastDamageInfo;
+        ulong dmgClass = mem.ReadPtr(info + (ulong)Off.DamageInfo_DamageType);
+        if (ProcessMemory.IsValidObjectPointer(dmgClass) && _session != null) dmgType = _session.Names.GetObjectName(dmgClass);
+        mem.TryRead(info + (ulong)Off.DamageInfo_BlockType, out blockType);
+        string blockText = blockType switch
+        {
+            0 => "sem bloqueio",
+            1 => "bloqueio comum",
+            2 => "bloqueio perfeito",
+            3 => "guarda quebrada",
+            _ => "?",
+        };
+        string unblockable = _scanner.IsUnblockableType(dmgType) ? " (imbloqueável)" : "";
+        Logger.Info(Cat, $"Dano recebido: {delta:F1} · {dmgType}{unblockable} · resultado: {blockText} · tecla {key}{facing} · {who}");
+        LearnFromDamage(delta, now, dmgType, blockType);
+    }
+
+    // ================================================================== ajuste aprendido por montagem
+
+    private string _pressMontage = "";
+    private long _pressHitAt;
+
+    private double LearnedOffsetSeconds(string montage) =>
+        montage.Length > 0 && _cfg.AutoBlockMontageOffsetsMs.TryGetValue(montage, out int ms) ? ms / 1000.0 : 0;
+
+    /// <summary>
+    /// Alguns golpes causam dano depois do notify de golpe (ex.: rabo do escorpião, ~220 ms depois). Quando o dano
+    /// chega com a tecla apertada para aquela montagem, a diferença entre o golpe previsto e o dano real vira um
+    /// ajuste daquela montagem (salvo em AutoBlockMontageOffsetsMs), e os próximos bloqueios saem no tempo certo.
+    /// </summary>
+    private void LearnFromDamage(float delta, long now, string dmgType, byte blockType)
+    {
+        if (delta < 5f || _pressMontage.Length == 0 || _pressHitAt == 0) return; // ignora dano contínuo (veneno etc.)
+        double delay = (now - _pressHitAt) / (double)Stopwatch.Frequency;     // > 0: dano depois do previsto
+        string montage = _pressMontage;
+        _pressMontage = "";
+        if (delay < -0.4 || delay > 0.8) return;
+        if (!_attackers.Any(a => a.Contains(montage, StringComparison.Ordinal))) return;
+
+        // Dano de um tipo imbloqueável vindo do ataque para o qual a tecla foi apertada: esse ataque passa a ser
+        // esquivado (entra em AutoDodgeMontages e fica salvo).
+        if (_scanner.IsUnblockableType(dmgType))
+        {
+            if (!_cfg.AutoDodgeMontages.Any(m => montage.Contains(m, StringComparison.OrdinalIgnoreCase)))
+            {
+                _cfg.AutoDodgeMontages.Add(montage);
+                _unblockableCache.Clear();
+                Logger.Info(Cat, $"Aprendido: '{montage}' causa {dmgType}, que não pode ser bloqueado → passa a ser esquivado (AutoDodgeMontages).");
+                SaveConfig();
+            }
+
+            return;
+        }
+
+        // Ajuste de tempo quando o jogo registrou bloqueio comum (tecla valendo, mas fora da janela perfeita) ou quando
+        // a tecla já tinha sido solta antes do dano (golpe chegou depois do previsto, ex.: onda do GroundSlash).
+        bool timing = blockType == 1 || (blockType == 0 && !_holding && delay > 0);
+        if (!timing || Math.Abs(delay) < 0.04) return;
+
+        int old = _cfg.AutoBlockMontageOffsetsMs.TryGetValue(montage, out int o) ? o : 0;
+        int updated = Math.Clamp((int)Math.Round(old + delay * 1000 * 0.8), -300, 600);
+        if (updated == old) return;
+        _cfg.AutoBlockMontageOffsetsMs[montage] = updated;
+        Logger.Info(Cat, $"Ajuste aprendido para '{montage}': dano {delay * 1000:+0;-0} ms em relação ao golpe previsto → ajuste {old} → {updated} ms.");
+        SaveConfig();
+    }
+
+    private void SaveConfig()
+    {
+        try
+        {
+            G2Overlay.Config.ConfigManager.Save(_cfg);
+        }
+        catch
+        {
+            // o aprendizado continua valendo nesta sessão
+        }
+    }
+
+    // ================================================================== virar para o atacante
+
+    private const double TurnSeconds = 0.8;
+    private const double TurnToleranceDeg = 25;
+    private double _pixelsPerDegree = 8;   // estimado em malha fechada (sensibilidade do mouse do jogo)
+    private int _lastTurnPixels;
+    private double _lastTurnYaw;
+
+    /// <summary>Diferença (graus, −180…180) entre a direção da câmera e a direção até o ponto, no plano horizontal.</summary>
+    private static double YawError(Camera cam, FVector target)
+    {
+        double want = Math.Atan2(target.Y - cam.Location.Y, target.X - cam.Location.X) * 180 / Math.PI;
+        double err = want - cam.Rotation.Yaw;
+        while (err > 180) err -= 360;
+        while (err < -180) err += 360;
+        return err;
+    }
+
+    /// <summary>
+    /// Move o mouse na horizontal até o atacante ficar à frente (± 25°). A relação pixels→graus é aprendida
+    /// observando quanto a câmera girou com o movimento do frame anterior.
+    /// </summary>
+    private void TurnToward(Camera cam, Creature c)
+    {
+        if (!cam.IsValid) return;
+        _lastThreatForLog = c;
+        double yaw = cam.Rotation.Yaw;
+        if (_lastTurnPixels != 0)
+        {
+            double turned = yaw - _lastTurnYaw;
+            while (turned > 180) turned -= 360;
+            while (turned < -180) turned += 360;
+            if (Math.Abs(_lastTurnPixels) >= 4 && Math.Abs(turned) > 0.05)
+            {
+                double ppd = Math.Abs(_lastTurnPixels / turned);
+                if (ppd is > 0.5 and < 200) _pixelsPerDegree = _pixelsPerDegree * 0.6 + ppd * 0.4;
+            }
+        }
+
+        double err = YawError(cam, c.Location);
+        if (Math.Abs(err) <= TurnToleranceDeg * 0.5)
+        {
+            _lastTurnPixels = 0;
+            return;
+        }
+
+        int px = (int)Math.Round(Math.Clamp(err * _pixelsPerDegree * 0.6, -_cfg.AimMaxStep * 3, _cfg.AimMaxStep * 3));
+        if (px == 0) return;
+        if (Native.SendMouseMove(px, 0))
+        {
+            _lastTurnPixels = px;
+            _lastTurnYaw = yaw;
+        }
     }
 
     // ================================================================== tecla
@@ -244,6 +580,7 @@ public sealed class AutoBlock : IDisposable
     {
         if (!_holding) return;
         _holding = false;
+        _lastReleaseAt = Stopwatch.GetTimestamp();
         Native.SendKey(_cfg.AutoBlockKey, false);
         if (reason != null) Logger.Debug(Cat, $"Bloqueio solto ({reason}).");
     }
@@ -278,6 +615,14 @@ public sealed class AutoBlock : IDisposable
     {
         if (_windowReadAt != 0 && Stopwatch.GetElapsedTime(_windowReadAt, now).TotalSeconds < 2) return;
         _windowReadAt = now;
+        ulong dc = mem.ReadPtr(pawn + (ulong)Off.SurvivalCharacter_DodgeComponent);
+        if (ProcessMemory.IsValidObjectPointer(dc) &&
+            mem.TryRead(dc + (ulong)Off.DodgeComponent_PerfectDodgeWindow, out float dw) && dw > 0.03f && dw < 2f)
+        {
+            if (Math.Abs(dw - _perfectDodgeWindow) > 0.001f) Logger.Debug(Cat, $"Janela da esquiva perfeita: {dw * 1000:F0} ms.");
+            _perfectDodgeWindow = dw;
+        }
+
         ulong bc = mem.ReadPtr(pawn + (ulong)Off.SurvivalCharacter_BlockComponent);
         if (ProcessMemory.IsValidObjectPointer(bc) &&
             mem.TryRead(bc + (ulong)Off.BlockComponent_PerfectBlockWindow, out float w) && w > 0.03f && w < 2f)
@@ -287,8 +632,21 @@ public sealed class AutoBlock : IDisposable
         }
     }
 
-    /// <summary>Alvo de warp do ataque == jogador; sem alvo, a criatura precisa estar virada para o jogador.</summary>
-    private bool IsTargetingMe(ProcessMemory mem, Creature c, ulong pawn, FVector me, out string why)
+    /// <summary>Ataques desferidos de costas (coice do grilo, jato do besouro-bombardeiro, rabo…).</summary>
+    /// <summary>Ataques que se deslocam até o jogador sem estar virados para ele (escorpião enterrado).</summary>
+    private static bool IsHomingAttack(string montage) =>
+        montage.Contains("Burrow", StringComparison.OrdinalIgnoreCase) || montage.Contains("Underground", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsRearAttack(string montage) =>
+        montage.Contains("Back", StringComparison.OrdinalIgnoreCase) || montage.Contains("Rear", StringComparison.OrdinalIgnoreCase) ||
+        montage.Contains("Spray", StringComparison.OrdinalIgnoreCase) || montage.Contains("Butt", StringComparison.OrdinalIgnoreCase) ||
+        montage.Contains("Tail", StringComparison.OrdinalIgnoreCase) || montage.Contains("Kick", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Alvo de warp do ataque == jogador; sem alvo: a até 3 m vale qualquer direção; mais longe, a criatura precisa
+    /// estar virada para o jogador (ou de costas, em ataques traseiros como o coice do grilo).
+    /// </summary>
+    private bool IsTargetingMe(ProcessMemory mem, Creature c, ulong pawn, FVector me, string montage, out string why)
     {
         why = "";
         ulong target = mem.ReadPtr(c.Actor + (ulong)Off.SurvivalCharacter_MotionWarpingAttackTarget);
@@ -313,13 +671,15 @@ public sealed class AutoBlock : IDisposable
         double lf2 = Math.Sqrt(fx * fx + fy * fy), lt2 = Math.Sqrt(to.X * to.X + to.Y * to.Y);
         double lf3 = Math.Sqrt(fx * fx + fy * fy + fz * fz), lt3 = to.Length;
         if (lt3 < 1e-6) return true; // em cima do jogador
-        // Bem perto (≤ 2 m), golpes laterais também acertam: tolera até 100°.
         double distCm = Math.Max(0, to.Length - Math.Max(c.CapsuleRadius, Math.Max(c.BoxExtent.X, c.BoxExtent.Y)));
-        double limitDeg = distCm <= 200 ? Math.Max(_cfg.AutoBlockFacingDegrees, 100) : _cfg.AutoBlockFacingDegrees;
+        // Bem perto (≤ 3 m) qualquer direção vale: golpes laterais, coices e giros também acertam.
+        if (distCm <= 300 || IsHomingAttack(montage)) return true;
+        double limitDeg = _cfg.AutoBlockFacingDegrees;
         double cosLimit = Math.Cos(limitDeg * Math.PI / 180.0);
         double cos2 = lf2 > 1e-6 && lt2 > 1e-6 ? (fx * to.X + fy * to.Y) / (lf2 * lt2) : 1;
         double cos3 = lf3 > 1e-6 ? (fx * to.X + fy * to.Y + fz * to.Z) / (lf3 * lt3) : 1;
         if (cos2 >= cosLimit || cos3 >= cosLimit) return true;
+        if (IsRearAttack(montage) && (cos2 <= 0 || cos3 <= 0)) return true; // ataque traseiro: de lado/costas para você (≥ 90°)
         why = $"criatura não está virada para você ({Math.Acos(Math.Clamp(Math.Max(cos2, cos3), -1, 1)) * 180 / Math.PI:F0}° > {limitDeg:F0}°)";
         return false;
     }
@@ -329,6 +689,15 @@ public sealed class AutoBlock : IDisposable
     /// <summary>Velocidade de aproximação (m/s) acima da qual a criatura é tratada como em investida.</summary>
     private const double ChargeSpeedMps = 3.0;
     private const double FastChargeSpeedMps = 6.0;
+
+    /// <summary>Janela de golpe a partir da qual o instante do dano é decidido pelo contato.</summary>
+    private const double LongWindowSeconds = 0.3;
+
+    /// <summary>Tempo mínimo até o golpe para soltar e reapertar a tecla (renovar a janela perfeita).</summary>
+    private const double MinRepressSeconds = 0.06;
+
+    /// <summary>Distância (m, da borda da criatura) em que o golpe da montagem ainda alcança o jogador.</summary>
+    private const double ReachToleranceMeters = 1.5;
 
     private readonly Dictionary<ulong, (FVector Pos, long At, double Closing)> _motion = new(128);
 
@@ -366,22 +735,27 @@ public sealed class AutoBlock : IDisposable
         Logger.Debug(Cat, $"Diag: {c.Class.Name} a {distM:F1} m · Mesh=0x{c.Mesh:X} AnimInstance={animName} · montagens tocando={(count < 0 ? "?" : count.ToString())}");
     }
 
+    private string _rejectMontage = "";
+
     private void LogRejected(Creature c, string reason, long now)
     {
         var key = (c.Actor, reason.Length > 12 ? reason[..12] : reason);
         if (_rejectLog.TryGetValue(key, out long last) && Stopwatch.GetElapsedTime(last, now).TotalSeconds < 1) return;
         if (_rejectLog.Count > 1024) _rejectLog.Clear();
         _rejectLog[key] = now;
-        Logger.Debug(Cat, $"Golpe de '{c.Name}' ignorado: {reason}.");
+        Logger.Debug(Cat, $"Golpe de '{c.Name}'{(_rejectMontage.Length > 0 ? $" ({_rejectMontage})" : "")} ignorado: {reason}.");
     }
 
     /// <summary>Segundos até o próximo golpe entre as montagens em execução (-1 = nenhum).</summary>
-    private double NextHitSeconds(GameSession s, ulong anim) => NextHitSeconds(s, anim, out _);
+    private double NextHitSeconds(GameSession s, ulong anim) => NextHitSeconds(s, anim, out _, out _, out _);
 
     /// <param name="attacking">alguma montagem de ataque (com golpes) está tocando, mesmo que o golpe já tenha passado</param>
-    private double NextHitSeconds(GameSession s, ulong anim, out bool attacking)
+    /// <param name="windowEnd">segundos até o fim da janela do golpe escolhido (= início, para HitFrame)</param>
+    private double NextHitSeconds(GameSession s, ulong anim, out bool attacking, out string montageName, out double windowEnd)
     {
         attacking = false;
+        montageName = "";
+        windowEnd = -1;
         var mem = s.Mem;
         if (!mem.TryRead(anim + (ulong)Off.AnimInstance_MontageInstances, out TArrayHeader arr)) return -1;
         if (arr.Num <= 0 || !arr.IsPlausible(256)) return -1;
@@ -404,16 +778,52 @@ public sealed class AutoBlock : IDisposable
             var mi = GetMontage(s, montage);
             if (mi == null || mi.Hits.Length == 0) continue;
             attacking = true;
-            foreach (float h in mi.Hits)
+            pos = ExtrapolatePosition(inst, montage, pos, rate * mi.RateScale);
+            if (montageName.Length == 0) montageName = mi.Name;
+            double r = rate * mi.RateScale;
+            float learned = (float)(LearnedOffsetSeconds(mi.Name) * r); // ajuste aprendido, no tempo da montagem
+            for (int j = 0; j < mi.Hits.Length; j++)
             {
-                if (h < pos - 0.02f) continue;
-                double t = Math.Max(0, (h - pos) / (rate * mi.RateScale));
-                if (best < 0 || t < best) best = t;
-                break; // Hits em ordem: o primeiro à frente é o próximo
+                float rawEnd = j < mi.Ends.Length ? mi.Ends[j] : mi.Hits[j];
+                // O ajuste aprendido só vale para golpes pontuais; janelas longas usam o contato.
+                float shift = rawEnd - mi.Hits[j] >= LongWindowSeconds * r ? 0f : learned;
+                float hs = mi.Hits[j] + shift, he = rawEnd + shift;
+                if (he < pos - 0.02f) continue; // janela já terminou
+                double t = Math.Max(0, (hs - pos) / r);   // dentro de uma janela ativa: golpe pode vir agora (0)
+                if (best < 0 || t < best)
+                {
+                    best = t;
+                    windowEnd = Math.Max(t, (he - pos) / r);
+                    montageName = mi.Name;
+                }
+                break; // em ordem: a primeira janela não terminada é a próxima
             }
         }
 
         return best;
+    }
+
+    private readonly Dictionary<(ulong Inst, ulong Montage), (float Pos, long ChangedAt)> _positions = new(64);
+
+    /// <summary>
+    /// Criaturas longe da câmera ou fora da tela têm a animação atualizada só a cada 2–4 frames (otimização de
+    /// taxa de atualização da engine): a posição lida fica parada e depois salta, e o golpe parecia mais distante
+    /// do que estava — a tecla saía atrasada (golpes em 50–85 ms). Estima a posição real a partir da última mudança.
+    /// </summary>
+    private float ExtrapolatePosition(ulong inst, ulong montage, float pos, float rate)
+    {
+        long now = Stopwatch.GetTimestamp();
+        var key = (inst, montage);
+        if (!_positions.TryGetValue(key, out var e) || Math.Abs(e.Pos - pos) > 0.0001f)
+        {
+            if (_positions.Count > 512) _positions.Clear();
+            _positions[key] = (pos, now);
+            return pos;
+        }
+
+        // Mesma posição desde a última leitura: avança pelo tempo decorrido (no máximo 70 ms ≈ 4 frames, para não adiantar demais em pausas).
+        double elapsed = Math.Min(0.07, Stopwatch.GetElapsedTime(e.ChangedAt, now).TotalSeconds);
+        return pos + (float)(elapsed * rate);
     }
 
     private MontageInfo? GetMontage(GameSession s, ulong montage)
@@ -436,7 +846,7 @@ public sealed class AutoBlock : IDisposable
         var ci = s.Objects.GetObjectClassInfo(montage);
         if (ci == null) return null; // tenta de novo depois
         mi = new MontageInfo { NameRaw = nameRaw, CheckedAt = now, Name = s.Names.GetObjectName(montage) };
-        if (Array.IndexOf(ci.Chain, "AnimMontage") >= 0) mi.Hits = ReadHitTimes(s, montage, mi.Name, out mi.RateScale);
+        if (Array.IndexOf(ci.Chain, "AnimMontage") >= 0) mi.Hits = ReadHitTimes(s, montage, mi.Name, out mi.RateScale, out mi.Ends);
         if (_montages.Count > 4096) _montages.Clear();
         _montages[montage] = mi;
         return mi;
@@ -446,6 +856,7 @@ public sealed class AutoBlock : IDisposable
     {
         public ulong NameRaw;
         public float[] Hits = Array.Empty<float>();
+        public float[] Ends = Array.Empty<float>();
         public float RateScale = 1f;
     }
 
@@ -457,10 +868,10 @@ public sealed class AutoBlock : IDisposable
     ///   notifies da própria montagem + para cada SlotAnimTracks[].AnimTrack.AnimSegments[]:
     ///   tempo_montagem = StartPos + (tempo_na_sequência − AnimStartTime) / (AnimPlayRate × RateScale da sequência).
     /// </summary>
-    private float[] ReadHitTimes(GameSession s, ulong montage, string name, out float rateScale)
+    private float[] ReadHitTimes(GameSession s, ulong montage, string name, out float rateScale, out float[] ends)
     {
         var mem = s.Mem;
-        var hits = new List<float>(4);
+        var hits = new List<(float S, float E)>(4);
         var others = new HashSet<string>();
         ReadNotifyHits(s, montage, hits, others);
         rateScale = mem.Read<float>(montage + (ulong)Off.AnimSequenceBase_RateScale);
@@ -501,9 +912,13 @@ public sealed class AutoBlock : IDisposable
                         float segLen = (animEnd - animStart) / rate;
                         loops = Math.Clamp(loops, 1, 8);
                         for (int k = 0; k < loops; k++)
-                            foreach (float ts in si.Hits)
+                            for (int h = 0; h < si.Hits.Length; h++)
+                            {
+                                float ts = si.Hits[h], te = Math.Min(si.Ends[h], animEnd);
                                 if (ts >= animStart - 0.001f && ts <= animEnd + 0.001f)
-                                    hits.Add(startPos + k * segLen + (ts - animStart) / rate);
+                                    hits.Add((startPos + k * segLen + (ts - animStart) / rate,
+                                              startPos + k * segLen + (Math.Max(te, ts) - animStart) / rate));
+                            }
                     }
                 }
             }
@@ -512,13 +927,15 @@ public sealed class AutoBlock : IDisposable
         hits.Sort();
         if (_loggedMontages.Add(name))
         {
+            static string W((float S, float E) h) => h.E - h.S > 0.01f ? $"{h.S:F2}–{h.E:F2}s" : $"{h.S:F2}s";
             if (hits.Count > 0)
-                Logger.Debug(Cat, $"Montagem '{name}': golpes em {string.Join(", ", hits.Select(h => $"{h:F2}s"))} ({segCount} segmentos).");
+                Logger.Debug(Cat, $"Montagem '{name}': golpes em {string.Join(", ", hits.Select(W))} ({segCount} segmentos; outros notifies: {string.Join(", ", others.Take(8))}).");
             else
                 Logger.Debug(Cat, $"Montagem '{name}': nenhum golpe ({segCount} segmentos; notifies: {string.Join(", ", others.Take(8))}).");
         }
 
-        return hits.ToArray();
+        ends = hits.Select(h => h.E).ToArray();
+        return hits.Select(h => h.S).ToArray();
     }
 
     private SequenceInfo? GetSequence(GameSession s, ulong seq, HashSet<string> others)
@@ -529,18 +946,25 @@ public sealed class AutoBlock : IDisposable
 
         var ci = s.Objects.GetObjectClassInfo(seq);
         if (ci == null || Array.IndexOf(ci.Chain, "AnimSequenceBase") < 0) return null;
-        var hits = new List<float>(2);
+        var hits = new List<(float S, float E)>(2);
         ReadNotifyHits(s, seq, hits, others);
         hits.Sort();
         float rs = mem.Read<float>(seq + (ulong)Off.AnimSequenceBase_RateScale);
-        si = new SequenceInfo { NameRaw = nameRaw, Hits = hits.ToArray(), RateScale = rs > 0.01f && rs < 20f ? rs : 1f };
+        si = new SequenceInfo
+        {
+            NameRaw = nameRaw,
+            Hits = hits.Select(h => h.S).ToArray(),
+            Ends = hits.Select(h => h.E).ToArray(),
+            RateScale = rs > 0.01f && rs < 20f ? rs : 1f,
+        };
         if (_sequences.Count > 8192) _sequences.Clear();
         _sequences[seq] = si;
         return si;
     }
 
     /// <summary>Notifies de golpe de uma animação (montagem ou sequência), no tempo da própria animação.</summary>
-    private static void ReadNotifyHits(GameSession s, ulong asset, List<float> hits, HashSet<string> others)
+    /// <summary>Golpes como janelas (início, fim): HitFrame = instante; HitActive/MultiHitFrame = início + Duration.</summary>
+    private static void ReadNotifyHits(GameSession s, ulong asset, List<(float S, float E)> hits, HashSet<string> others)
     {
         var mem = s.Mem;
         if (!mem.TryRead(asset + (ulong)Off.AnimSequenceBase_Notifies, out TArrayHeader arr)) return;
@@ -558,7 +982,7 @@ public sealed class AutoBlock : IDisposable
             ulong notify = BitConverter.ToUInt64(e[Off.AnimNotifyEvent_Notify..]);
             ulong state = BitConverter.ToUInt64(e[Off.AnimNotifyEvent_NotifyStateClass..]);
 
-            bool isHit = false;
+            bool isHit = false, isState = false;
             if (ProcessMemory.IsValidObjectPointer(notify))
             {
                 var nci = s.Objects.GetObjectClassInfo(notify);
@@ -570,7 +994,7 @@ public sealed class AutoBlock : IDisposable
             {
                 var sci = s.Objects.GetObjectClassInfo(state);
                 if (sci != null && (Array.IndexOf(sci.Chain, "AnimNotifyState_HitActive") >= 0 ||
-                                    Array.IndexOf(sci.Chain, "AnimNotifyState_MultiHitFrame") >= 0)) isHit = true;
+                                    Array.IndexOf(sci.Chain, "AnimNotifyState_MultiHitFrame") >= 0)) isHit = isState = true;
                 else if (sci != null && others.Count < 32) others.Add(sci.Name);
             }
 
@@ -587,7 +1011,9 @@ public sealed class AutoBlock : IDisposable
                 2 => segBegin + value * segLen,  // Proportional
                 _ => value,                      // Absolute
             } + offset;
-            if (float.IsFinite(time) && time >= 0 && time <= length + 0.5f) hits.Add(time);
+            float dur = isState ? BitConverter.ToSingle(e[Off.AnimNotifyEvent_Duration..]) : 0f;
+            if (!float.IsFinite(dur) || dur < 0 || dur > 10) dur = 0;
+            if (float.IsFinite(time) && time >= 0 && time <= length + 0.5f) hits.Add((time, time + dur));
         }
     }
 
@@ -667,7 +1093,9 @@ public sealed class AutoBlock : IDisposable
         if (c == null) return;
         if (cam.ProjectBox(c.BoxCenter, c.BoxExtent, out float l, out float t, out float rr, out float b))
             r.DrawRect(l - 4, t - 4, rr - l + 8, b - t + 8, _holding ? HoldColor : WarnColor, 2f);
-        string text = _holding ? $"BLOQUEANDO · {c.Name}" : $"Ataque de {c.Name} em {ThreatSeconds:F2} s";
+        string text = ThreatIsDodge
+            ? (_dodgeKeyDown ? $"ESQUIVANDO · {c.Name}" : $"Ataque imbloqueável de {c.Name} em {ThreatSeconds:F2} s")
+            : _holding ? $"BLOQUEANDO · {c.Name}" : $"Ataque de {c.Name} em {ThreatSeconds:F2} s";
         r.DrawText(text, cx, y, _holding ? HoldColor : WarnColor, TextAlign.Center, title: true);
     }
 
@@ -675,8 +1103,13 @@ public sealed class AutoBlock : IDisposable
     public void Suspend()
     {
         Threat = null;
+        ReleaseDodge();
         Release("sem leitura do jogo");
     }
 
-    public void Dispose() => Release("encerrando");
+    public void Dispose()
+    {
+        ReleaseDodge();
+        Release("encerrando");
+    }
 }

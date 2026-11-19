@@ -195,8 +195,23 @@ aumente `AimSmoothing` ou diminua `AimGain`.
 4. Tempo até o golpe = (instante − posição) / PlayRate. Alvo: `MotionWarpingAttackTarget == pawn local`; se vazio,
    a criatura precisa estar virada para o jogador (forward do quaternion de `ComponentToWorld`). Outro alvo → ignora.
 4b. **Investidas** (abelha, vespa, joaninha): a montagem de carga fica num trecho em loop até a criatura chegar.
-   Se a criatura se aproxima a mais de 3 m/s (velocidade medida entre frames), o tempo até o golpe passa a ser o tempo
-   até o contato (distância ÷ velocidade), e a distância máxima vale para a posição prevista no contato.
+   Se a criatura se aproxima a mais de 3 m/s (velocidade medida entre frames) **e**, no instante do golpe da montagem,
+   ainda estaria a mais de 1,5 m (ou o golpe da montagem já passou e ela vem a mais de 6 m/s), o tempo até o golpe passa
+   a ser o tempo até o contato (distância ÷ velocidade). Golpes com avanço que chegam a tempo (combos do grilo, saltos)
+   continuam usando o instante da montagem.
+4d. Criaturas longe da câmera têm a animação atualizada a cada 2–4 frames: a posição da montagem fica parada e salta.
+   A posição é extrapolada pelo tempo desde a última mudança (até 70 ms) para a tecla não sair atrasada.
+4e. Golpes com `AnimNotifyState_HitActive` são janelas (início → início + Duration): a tecla fica segurada até o fim da
+   janela. Ajuste aprendido por montagem (`AutoBlockMontageOffsetsMs`): quando o dano (≥ 5) chega com a tecla apertada
+   para aquela montagem, 80% da diferença entre o golpe previsto e o dano real é somada ao ajuste (limite −300…+600 ms),
+   gravada no config.json e aplicada aos próximos golpes daquela montagem.
+4f. A cada dano recebido o overlay lê `HealthComponent.LastDamageInfo` (0x3B0) do jogador: `DamageType` (+0x40) e
+   `BlockType` (+0x69: 0 nenhum, 1 comum, 2 perfeito, 3 guarda quebrada). Se o tipo é imbloqueável (lista lida dos
+   CDOs) e veio do ataque para o qual a tecla foi apertada, a montagem entra em `AutoDodgeMontages` (salvo). O ajuste
+   de tempo só é aprendido com bloqueio comum ou com a tecla já solta antes do dano.
+4c. A distância máxima é comparada com a distância **prevista no instante do golpe** (saltos como o `LeapOfFaith` do
+   grilo começam longe). Sem alvo de warp: até 3 m qualquer direção vale; mais longe, a criatura precisa estar virada
+   para o jogador, ou de lado/costas (≥ 90°) em ataques traseiros (montagem com Back/Kick/Tail/Rear/Spray/Butt no nome).
 5. Quando o menor tempo ≤ antecedência (padrão: metade de `BlockComponent.PerfectBlockWindow` do jogador + 20 ms),
    a tecla é pressionada (`SendInput`), e solta `AutoBlockHoldMs` depois do golpe. Golpes seguidos estendem o tempo.
    Se você já está segurando a tecla, o overlay não interfere; sem foco/menu aberto/sem leitura do jogo, a tecla é solta.
@@ -204,3 +219,12 @@ aumente `AimSmoothing` ou diminua `AimGain`.
 `UAnimInstance::MontageInstances` não é refletido: é detectado em runtime procurando um `TArray` cujo 1º elemento
 aponta para uma struct com `Montage` = `UAnimMontage` e posição/velocidade plausíveis (duas confirmações). A detecção
 acontece no primeiro ataque (seu ou de uma criatura); o log mostra `UAnimInstance.MontageInstances detectado em 0x…`.
+
+### Esquiva automática (ataques imbloqueáveis)
+
+`Aim/UnblockableScanner` percorre GObjects aos poucos (3.000 objetos por frame; `FUObjectItem` de 0x18 bytes, validado
+por `InternalIndex`) atrás dos CDOs (`RF_ClassDefaultObject`) de classes derivadas de `USurvivalDamageType` com
+`bCanBlock = false`. O nome do tipo vira palavras (`BP_CricketLeapOfFaithDamage_C` → cricket, leap, faith) e uma
+montagem cujo nome contém todas elas é imbloqueável; `AutoDodgeMontages` (padrão `LeapOfFaith`) completa a lista.
+Para esses golpes a tecla de bloqueio fica solta e a tecla de esquiva (`AutoDodgeKey`, Alt) é tocada (50 ms) quando
+faltam metade da `DodgeComponent.PerfectDodgeWindow` + 20 ms, com intervalo mínimo de 0,6 s entre esquivas.

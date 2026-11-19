@@ -152,6 +152,30 @@ public sealed class OverlayConfig
     /// <summary>Mostrar aviso "Ataque de X em 0,30 s" / "BLOQUEANDO" no centro da tela.</summary>
     public bool AutoBlockShowWarning { get; set; } = true;
 
+    /// <summary>Girar a câmera para o atacante antes do golpe (o bloqueio só protege pela frente).</summary>
+    public bool AutoBlockTurnToAttacker { get; set; } = false;
+
+    // ---------------- Esquiva automática (ataques imbloqueáveis)
+    /// <summary>Em ataques que não podem ser bloqueados (ex.: salto do grilo), aperta a tecla de esquiva na hora certa.</summary>
+    public bool AutoDodgeEnabled { get; set; } = true;
+
+    /// <summary>Tecla de esquiva do jogo (código VK). 0x12 = Alt (padrão do Grounded 2).</summary>
+    public int AutoDodgeKey { get; set; } = 0x12;
+
+    /// <summary>Antecedência (ms) da esquiva antes do golpe. 0 = automática (metade da PerfectDodgeWindow + 20 ms).</summary>
+    public int AutoDodgeLeadMs { get; set; } = 0;
+
+    /// <summary>
+    /// Trechos do nome da montagem de ataques imbloqueáveis (além dos tipos de dano lidos do jogo).
+    /// </summary>
+    public List<string> AutoDodgeMontages { get; set; } = new() { "LeapOfFaith" };
+
+    /// <summary>
+    /// Ajuste (ms) do instante do golpe por montagem, aprendido sozinho quando o dano chega fora do previsto
+    /// (positivo = o dano vem depois do notify de golpe). Pode ser editado ou apagado à mão.
+    /// </summary>
+    public Dictionary<string, int> AutoBlockMontageOffsetsMs { get; set; } = new();
+
     // ---------------- Desempenho
     public int EntityScanIntervalMs { get; set; } = 500;
     public int FullRevalidateIntervalMs { get; set; } = 10000;
@@ -187,6 +211,10 @@ public sealed class OverlayConfig
         AimMaxDistanceMeters = Math.Clamp(AimMaxDistanceMeters, 2f, 1000f);
         if (AimKey <= 0 || AimKey > 0xFE) AimKey = 0x02;
         if (AutoBlockKey <= 0 || AutoBlockKey > 0xFE) AutoBlockKey = 0x02;
+        if (AutoDodgeKey <= 0 || AutoDodgeKey > 0xFE) AutoDodgeKey = 0x12;
+        AutoDodgeLeadMs = Math.Clamp(AutoDodgeLeadMs, 0, 1000);
+        AutoDodgeMontages = (AutoDodgeMontages ?? new List<string>()).Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
+        AutoBlockMontageOffsetsMs ??= new Dictionary<string, int>();
         AutoBlockMaxDistanceMeters = Math.Clamp(AutoBlockMaxDistanceMeters, 1f, 50f);
         AutoBlockLeadMs = Math.Clamp(AutoBlockLeadMs, 0, 1000);
         AutoBlockHoldMs = Math.Clamp(AutoBlockHoldMs, 50, 2000);

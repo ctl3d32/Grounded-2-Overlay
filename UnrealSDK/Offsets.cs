@@ -35,6 +35,16 @@ public static class Off
     public static int UStruct_SuperStruct;
     public static int FNamePool_Blocks;
     public static int FUObjectArray_NumElements;
+    public static int FUObjectArray_ObjObjects;
+    public static int UObject_ObjectFlags;
+    public static int UObject_InternalIndex;
+    public static int SurvivalDamageType_bCanPerfectDodge;
+    public static int SurvivalDamageType_bCanBlock;
+    public static int SurvivalCharacter_DodgeComponent;
+    public static int DodgeComponent_PerfectDodgeWindow;
+    public static int HealthComponent_LastDamageInfo;
+    public static int DamageInfo_DamageType;
+    public static int DamageInfo_BlockType;
 
     // ---------------- Mundo / jogador
     public static int World_PersistentLevel;
@@ -134,6 +144,16 @@ public static class Off
         new("UStruct.SuperStruct", "UStruct", null, 0x40, OffsetSource.RuntimeDetected, "UStruct* SuperStruct (herança de classes)"),
         new("FNamePool.Blocks", "FNamePool", null, 0x10, OffsetSource.RuntimeDetected, "uint8* Blocks[] do FNameEntryAllocator"),
         new("FUObjectArray.NumElements", "FUObjectArray", null, 0x24, OffsetSource.Engine, "ObjObjects(0x10).NumElements(0x14)"),
+        new("FUObjectArray.ObjObjects", "FUObjectArray", null, 0x10, OffsetSource.Engine, "FUObjectItem** (chunks de 64K itens)"),
+        new("UObject.ObjectFlags", "UObjectBase", null, 0x8, OffsetSource.Engine, "EObjectFlags (RF_ClassDefaultObject = 0x10)"),
+        new("UObject.InternalIndex", "UObjectBase", null, 0xC, OffsetSource.Engine, "índice em GObjects"),
+        new("SurvivalDamageType.bCanPerfectDodge", "SurvivalDamageType", "bCanPerfectDodge", 0x64, OffsetSource.Reflected, "bool"),
+        new("SurvivalDamageType.bCanBlock", "SurvivalDamageType", "bCanBlock", 0x65, OffsetSource.Reflected, "bool: false = ataque imbloqueável"),
+        new("SurvivalCharacter.DodgeComponent", "SurvivalCharacter", "DodgeComponent", 0x13E8, OffsetSource.Reflected, "UDodgeComponent*"),
+        new("HealthComponent.LastDamageInfo", "HealthComponent", "LastDamageInfo", 0x3B0, OffsetSource.Reflected, "FDamageInfo do último dano recebido"),
+        new("DamageInfo.DamageType", "DamageInfo", "DamageType", 0x40, OffsetSource.Reflected, "TSubclassOf<UDamageType>"),
+        new("DamageInfo.BlockType", "DamageInfo", "BlockType", 0x69, OffsetSource.Reflected, "EBlockType: 0 None, 1 Blocked, 2 PerfectBlock, 3 BlockBreak"),
+        new("DodgeComponent.PerfectDodgeWindow", "DodgeComponent", "PerfectDodgeWindow", 0x1C4, OffsetSource.Reflected, "float (s): janela da esquiva perfeita"),
 
         new("World.PersistentLevel", "World", "PersistentLevel", 0x30, OffsetSource.Reflected, "ULevel* PersistentLevel"),
         new("World.GameState", "World", "GameState", 0x1B0, OffsetSource.Reflected, "AGameStateBase* GameState"),
@@ -261,6 +281,16 @@ public static class Off
         UStruct_SuperStruct = Values["UStruct.SuperStruct"];
         FNamePool_Blocks = Values["FNamePool.Blocks"];
         FUObjectArray_NumElements = Values["FUObjectArray.NumElements"];
+        FUObjectArray_ObjObjects = Values["FUObjectArray.ObjObjects"];
+        UObject_ObjectFlags = Values["UObject.ObjectFlags"];
+        UObject_InternalIndex = Values["UObject.InternalIndex"];
+        SurvivalDamageType_bCanPerfectDodge = Values["SurvivalDamageType.bCanPerfectDodge"];
+        SurvivalDamageType_bCanBlock = Values["SurvivalDamageType.bCanBlock"];
+        SurvivalCharacter_DodgeComponent = Values["SurvivalCharacter.DodgeComponent"];
+        DodgeComponent_PerfectDodgeWindow = Values["DodgeComponent.PerfectDodgeWindow"];
+        HealthComponent_LastDamageInfo = Values["HealthComponent.LastDamageInfo"];
+        DamageInfo_DamageType = Values["DamageInfo.DamageType"];
+        DamageInfo_BlockType = Values["DamageInfo.BlockType"];
 
         World_PersistentLevel = Values["World.PersistentLevel"];
         World_GameState = Values["World.GameState"];

@@ -97,6 +97,10 @@ Na primeira execução, o overlay procura o dump mais recente (`*dump*.jsonl`) e
 | `AutoBlockLeadMs` | 0 | antecedência do aperto antes do golpe; 0 = automática (metade da `PerfectBlockWindow` do jogador + 20 ms) |
 | `AutoBlockHoldMs` | 250 | quanto a tecla continua segurada depois do golpe (golpes seguidos dentro desse tempo mantêm a tecla) |
 | `AutoBlockFacingDegrees` | 60 | se a criatura não informa o alvo, ela precisa estar virada para você dentro desse ângulo |
+| `AutoDodgeEnabled` / `AutoDodgeKey` | true / 0x12 (Alt) | em ataques **imbloqueáveis** (ex.: salto do grilo, `LeapOfFaith`) aperta a tecla de esquiva no instante da esquiva perfeita em vez de bloquear. Imbloqueáveis = tipos de dano com `bCanBlock = false` lidos do próprio jogo (CDOs de `SurvivalDamageType`) + `AutoDodgeMontages` |
+| `AutoDodgeLeadMs` / `AutoDodgeMontages` | 0 (auto) / `["LeapOfFaith"]` | antecedência da esquiva (auto = metade da `PerfectDodgeWindow` + 20 ms); trechos de nome de montagem tratados como imbloqueáveis |
+| `AutoBlockMontageOffsetsMs` | `{}` | ajuste por ataque (ms), **aprendido sozinho**: quando o dano chega com a tecla apertada mas fora do instante previsto (ex.: rabo do escorpião), a diferença é gravada aqui e os próximos bloqueios daquele ataque saem no tempo certo |
+| `AutoBlockTurnToAttacker` | false | gira a câmera (mouse, só na horizontal) para o atacante até 0,8 s antes do golpe, porque o bloqueio só protege pela frente |
 | `AutoBlockIgnoreRanged` / `AutoBlockShowWarning` | true / true | ignorar ataques à distância; aviso "Ataque de X em 0,30 s" / "BLOQUEANDO" |
 | `AimIgnoreTamed` | true | não mirar pets e buggies domados (`TameState == Tame` ou classe `*_Buggy_*` / `*_Pet_*`) |
 | `EspDroplets` | true | gotas no chão (`BP_World_Droplet_*`: água, chuva, folha de grama, limão, refrigerante), **exceto** as que têm "Dirty" (água suja), em azul-claro — opção própria |

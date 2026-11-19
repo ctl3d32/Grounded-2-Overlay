@@ -191,12 +191,23 @@ public sealed class MenuSystem
             case 3: // Defesa (bloqueio automático)
                 v = _cfg.AutoBlockEnabled; if (Checkbox("Bloqueio perfeito automático", ref v)) _cfg.AutoBlockEnabled = v;
                 v = _cfg.AutoBlockShowWarning; if (Checkbox("Aviso de ataque na tela", ref v)) _cfg.AutoBlockShowWarning = v;
+                v = _cfg.AutoBlockTurnToAttacker; if (Checkbox("Virar para o atacante (bloqueio só protege pela frente)", ref v)) _cfg.AutoBlockTurnToAttacker = v;
                 v = _cfg.AutoBlockIgnoreRanged; if (Checkbox("Ignorar ataques à distância", ref v)) _cfg.AutoBlockIgnoreRanged = v;
+                v = _cfg.AutoDodgeEnabled; if (Checkbox("Esquiva automática em ataques imbloqueáveis", ref v)) _cfg.AutoDodgeEnabled = v;
                 if (ButtonAt($"Tecla de bloqueio: {G2Overlay.Aim.AutoBlock.KeyLabel(_cfg.AutoBlockKey)}  (clique para trocar)", _x + Pad, Width - Pad * 2))
                 {
                     var bopts = G2Overlay.Aim.AutoBlock.KeyOptions;
                     int bidx = Array.FindIndex(bopts, o => o.Vk == _cfg.AutoBlockKey);
                     _cfg.AutoBlockKey = bopts[(bidx + 1) % bopts.Length].Vk;
+                    Changed = true;
+                }
+
+                _cursorY += 32f;
+                if (ButtonAt($"Tecla de esquiva: {G2Overlay.Aim.AutoBlock.KeyLabel(_cfg.AutoDodgeKey)}  (clique para trocar)", _x + Pad, Width - Pad * 2))
+                {
+                    var dopts = G2Overlay.Aim.AutoBlock.KeyOptions;
+                    int didx = Array.FindIndex(dopts, o => o.Vk == _cfg.AutoDodgeKey);
+                    _cfg.AutoDodgeKey = dopts[(didx + 1) % dopts.Length].Vk;
                     Changed = true;
                 }
 
