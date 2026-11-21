@@ -31,6 +31,13 @@ public sealed class Creature
     /// <summary>Pontos fracos: componentes de cena com "weak" no nome (ex.: LeftEyeWeakspot, RightLegWeakpoint1).</summary>
     public ulong[] WeakSpots = Array.Empty<ulong>();
 
+    /// <summary>Fraquezas/resistências a tipos de dano (HealthComponent.ColliderConfigs), já formatadas.</summary>
+    public string Weakness = "";
+    public string Resistance = "";
+    public bool WeaknessPending = true;
+    public int WeaknessTries;
+    public long LastWeaknessRead;
+
     /// <summary>Posição do ator em Level.Actors no scan (nível, índice): muda se o endereço for reaproveitado.</summary>
     public ulong ScanLevel;
     public int ScanIndex;

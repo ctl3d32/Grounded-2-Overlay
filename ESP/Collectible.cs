@@ -22,6 +22,24 @@ public sealed class Collectible
     public ulong ScanLevel;
     public int ScanIndex;
 
+    /// <summary>
+    /// Versão leve (BaseLODActor, um UObject fora de Level.Actors): Actor é o próprio BaseLODActor. A posição vem da
+    /// versão completa quando ela existe, senão do transform guardado na versão leve.
+    /// </summary>
+    public bool IsLod;
+
+    /// <summary>Último estado registrado no log (Transmissor ORC: bScanned); -1 = ainda não registrado.</summary>
+    public int LoggedState = -1;
+
+    /// <summary>Corpo (LootBag) com Tech Chip: inventário vazio → tratado como coletado.</summary>
+    public bool IsLootBody;
+
+    /// <summary>Texto entre parênteses quando Collected (ex.: "coletado", "ativado", "vazio").</summary>
+    public string CollectedLabel = "coletado";
+
+    /// <summary>BaseLODActor.FullActor lido no frame (0 enquanto só existe a versão leve).</summary>
+    public ulong LodFullActor;
+
     // ---------------- dinâmicos (frame)
     public FVector Location;
     public double DistanceMeters;
@@ -131,6 +149,17 @@ public sealed class Collectible
 
         string title = hatching ? "Hatching Egg" : "Taming Egg";
         return parts.Count > 0 ? $"{title}: {string.Join(" ", parts)}" : title;
+    }
+
+    /// <summary>"RecipeFistsNorthern" / "BP_Recipe_Statue_Weevil_C" → "Recipe: Fists Northern" / "Recipe: Statue Weevil".</summary>
+    public static string RecipeName(string source)
+    {
+        string s = source;
+        if (s.StartsWith("BP_", StringComparison.Ordinal)) s = s[3..];
+        if (s.EndsWith("_C", StringComparison.Ordinal)) s = s[..^2];
+        if (s.StartsWith("Recipe", StringComparison.OrdinalIgnoreCase)) s = s[6..].TrimStart('_');
+        string rest = Prettify(s);
+        return rest.Length > 0 ? $"Recipe: {rest}" : "Recipe";
     }
 
     /// <summary>Nome amigável a partir de ECollectibleType (EMolarTypeForTooltip).</summary>

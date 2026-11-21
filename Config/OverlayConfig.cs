@@ -21,6 +21,9 @@ public sealed class OverlayConfig
     public bool EspDistance { get; set; } = true;
     public bool EspHealthText { get; set; } = false;
     public bool EspTeam { get; set; } = false;
+
+    /// <summary>Fraquezas e resistências da criatura a tipos de dano (lidas de HealthComponent.ColliderConfigs).</summary>
+    public bool EspWeaknesses { get; set; } = true;
     public bool ShowDeadCreatures { get; set; } = false;
     public bool ShowPlayers { get; set; } = false;
     public float MaxDistanceMeters { get; set; } = 150f;
@@ -49,6 +52,33 @@ public sealed class OverlayConfig
     /// <summary>Ovos para chocar/domar ("Taming Egg" / "Hatching Egg": BP_World_Hatchable_*, RowName Taming_Egg…).</summary>
     public bool EspEggs { get; set; } = true;
 
+    /// <summary>Transmissor ORC (BP_Burgle_Quest_Flag_C, bandeira das missões do Burgle). Usa EggMaxDistanceMeters.</summary>
+    public bool EspOrcTransmitters { get; set; } = true;
+
+    /// <summary>Arenas de chefes (BP_BossManager_*), separadas dos coletáveis. Usa EggMaxDistanceMeters.</summary>
+    public bool EspBossArenas { get; set; } = true;
+
+    /// <summary>Receitas no chão (BP_Recipe_*), separadas dos coletáveis; mostradas pela versão leve. Usa EggMaxDistanceMeters.</summary>
+    public bool EspRecipes { get; set; } = true;
+
+    /// <summary>Tech Chips (BP_TechChip_Base_C), separados dos coletáveis; mostrados pela versão leve. Usa EggMaxDistanceMeters.</summary>
+    public bool EspTechChips { get; set; } = true;
+
+    /// <summary>Chaves no chão (palavra "Key"), separadas dos coletáveis; mostradas pela versão leve. Usa EggMaxDistanceMeters.</summary>
+    public bool EspKeys { get; set; } = true;
+
+    /// <summary>Baús únicos enterrados (BP_World_Buried_UniqueChest_*), separados dos coletáveis; mostrados pela versão leve. Usa EggMaxDistanceMeters.</summary>
+    public bool EspUniqueChests { get; set; } = true;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool AnyCollectibleEsp => EspCollectibles || EspArrows || EspDroplets || EspRawScience || EspEggs || EspOrcTransmitters || EspBossArenas || EspRecipes || EspTechChips || EspKeys || EspUniqueChests;
+
+    /// <summary>
+    /// Distância máxima (m) dos ovos. Eles são mostrados pela versão leve (BaseLODActor, existe a qualquer distância);
+    /// a versão completa, criada só perto do jogador, não é desenhada para não duplicar a caixa.
+    /// </summary>
+    public float EggMaxDistanceMeters { get; set; } = 1000f;
+
     /// <summary>
     /// Termos procurados (sem diferenciar maiúsculas, ignorando "_" e espaços) no nome da classe do ator
     /// e no NodeData.RowName de HarvestNodes. Os Milk Molars do mundo são "BP_Milk_Nugget_*".
@@ -76,6 +106,7 @@ public sealed class OverlayConfig
         ["droplet"] = "#4FC3F7",
         ["rawscience"] = "#FF80AB",
         ["egg"] = "#F5DEB3",
+        ["orctransmitter"] = "#FF9800",
     };
     public string CollectibleColor { get; set; } = "#00E5FF";
 
@@ -202,6 +233,7 @@ public sealed class OverlayConfig
         EntityScanIntervalMs = Math.Clamp(EntityScanIntervalMs, 100, 5000);
         FullRevalidateIntervalMs = Math.Clamp(FullRevalidateIntervalMs, 1000, 120000);
         CollectibleMaxDistanceMeters = Math.Clamp(CollectibleMaxDistanceMeters, 5f, 5000f);
+        EggMaxDistanceMeters = Math.Clamp(EggMaxDistanceMeters, 20f, 10000f);
         CollectibleBoxExtent = Math.Clamp(CollectibleBoxExtent, 2f, 500f);
         AimFovPixels = Math.Clamp(AimFovPixels, 10f, 1500f);
         AimSmoothing = Math.Clamp(AimSmoothing, 1f, 50f);
@@ -263,6 +295,7 @@ public sealed class OverlayConfig
         CollectibleColors.TryAdd("droplet", "#4FC3F7");
         CollectibleColors.TryAdd("rawscience", "#FF80AB");
         CollectibleColors.TryAdd("egg", "#F5DEB3");
+        CollectibleColors.TryAdd("orctransmitter", "#FF9800");
         if (BoxSource != "Mesh" && BoxSource != "Capsule") BoxSource = "Mesh";
         if (string.IsNullOrWhiteSpace(ProcessName)) ProcessName = "Grounded2Steam-Win64-Shipping";
     }

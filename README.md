@@ -76,6 +76,7 @@ Na primeira execução, o overlay procura o dump mais recente (`*dump*.jsonl`) e
 | `FpsLimit` | 60 | FPS do overlay (10–240) |
 | `HideWhenGameNotFocused` | true | oculta quando outra janela está em foco |
 | `EspBoxes` / `EspHealthBars` / `EspNames` / `EspDistance` / `EspHealthText` / `EspTeam` | — | elementos do ESP |
+| `EspWeaknesses` | true | abaixo da caixa: "Fraco: Spicy ×1.5, Chopping ×1.25" (laranja) e "Resiste: Salty ×0.5" (cinza), lidos de `HealthComponent.ColliderConfigs` de cada espécie |
 | `ShowDeadCreatures` / `ShowPlayers` | false | filtros |
 | `MaxDistanceMeters` | 150 | alcance do ESP |
 | `BoxColor` / `BoxThickness` / `HealthBarHeight` | `#00FF00` / 1.5 / 4 | aparência |
@@ -104,7 +105,14 @@ Na primeira execução, o overlay procura o dump mais recente (`*dump*.jsonl`) e
 | `AutoBlockIgnoreRanged` / `AutoBlockShowWarning` | true / true | ignorar ataques à distância; aviso "Ataque de X em 0,30 s" / "BLOQUEANDO" |
 | `AimIgnoreTamed` | true | não mirar pets e buggies domados (`TameState == Tame` ou classe `*_Buggy_*` / `*_Pet_*`) |
 | `EspDroplets` | true | gotas no chão (`BP_World_Droplet_*`: água, chuva, folha de grama, limão, refrigerante), **exceto** as que têm "Dirty" (água suja), em azul-claro — opção própria |
-| `EspEggs` | true | ovos para chocar/domar ("Taming Egg" / "Hatching Egg": `BP_World_Hatchable_*`, RowName `Taming_Egg…`) em cor de trigo, com a espécie: "Taming Egg: Ant" — opção própria na aba Coletáveis |
+| `EspEggs` | true | ovos para chocar/domar ("Taming Egg" / "Hatching Egg": `BP_World_Hatchable_*`, RowName `Taming_Egg…`) em cor de trigo, com a espécie: "Taming Egg: Ant" — opção própria na aba Coletáveis. Mostrados pela **versão leve** (`GameState → LODActorManagerComponent → LODActors`), que existe a qualquer distância; a versão completa só é desenhada se nenhuma versão leve apontar para ela (sem caixa duplicada) |
+| `EspOrcTransmitters` | true | Transmissor ORC (`BP_Burgle_Quest_Flag_C`, bandeira das missões do Burgle) em laranja. Não tem versão leve: os do mapa ficam no PersistentLevel, sempre carregados, e aparecem a qualquer distância. Os já ativados (`ScanSwitch.bScanned`) são ocultados, como os coletáveis já coletados ("Mostrar já coletados" os exibe com "(ativado)") |
+| `EspBossArenas` | true | arenas de chefes (`BP_BossManager_*`), opção própria (antes junto com Coletáveis). Ficam no PersistentLevel, sempre carregadas: aparecem a qualquer distância |
+| `EspRecipes` | true | receitas no chão (`BP_Recipe_*`, RowName `Recipe…`), opção própria (antes junto com Coletáveis), mostradas pela versão leve como os ovos |
+| `EspTechChips` | true | Tech Chips (`BP_TechChip_Base_C`, RowName `TechChip_…`), opção própria (antes junto com Coletáveis), mostrados pela versão leve como os ovos. Corpos com chip (`BP_DeadBody_*TechChip*`, `LootBag`) aparecem como "… (corpo)" e somem quando o inventário fica vazio; na versão leve, um corpo só aparece se o inventário ainda tiver um Tech Chip |
+| `EspKeys` | true | chaves no chão (palavra `Key` na classe ou no RowName, exceto `KeyLime`), opção própria (antes junto com Coletáveis), mostradas pela versão leve como os ovos |
+| `EspUniqueChests` | true | baús únicos enterrados (`BP_World_Buried_UniqueChest_*`), opção própria (antes junto com Coletáveis). Versão leve = `HarvestNodeLODActor`, identificada pelo LiteData (`LD_World_Buried_UniqueChest_<nome>`, ponteiro procurado em runtime) |
+| `EggMaxDistanceMeters` | 1000 | distância máxima dos ovos, Tech Chips, chaves, baús únicos, receitas, transmissores ORC e arenas de chefes (20–10000 m), slider próprio na aba Coletáveis |
 | `EspRawScience` | true | Raw Science (`BP_RawScience_A_C`, `_B_C`, `_DefenseReward_*`, derivados de `ScienceCollectable`) em rosa, com a ciência que cada um dá: "Raw Science (+5)" — opção própria na aba Coletáveis. Só aparecem os que o jogo já carregou como ator completo (perto do jogador); os distantes existem apenas como versão leve (LOD), sem posição legível |
 | `EspArrows` | true | flechas no chão (`BP_World_Arrow_*`: Arrow, Mint, Poison, Spicy) em verde-limão — opção própria na aba Coletáveis |
 | `CollectibleItemTokens` | `["Key","Recipe"]` | palavras que precisam aparecer inteiras (entre `_`) no nome da classe de um **item no chão**: `BP_Key_CoaltanaMats_C`, `BP_Recipe_SpicyKatana_C` |

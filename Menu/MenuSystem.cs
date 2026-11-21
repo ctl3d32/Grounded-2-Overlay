@@ -134,6 +134,7 @@ public sealed class MenuSystem
                 _cursorY = rowY;
                 v = _cfg.EspHealthBars; if (CheckboxAt("Barra de vida", ref v, _x + Pad + half, half)) _cfg.EspHealthBars = v;
                 v = _cfg.EspWeakSpots; if (Checkbox("Pontos fracos (marcadores amarelos)", ref v)) _cfg.EspWeakSpots = v;
+                v = _cfg.EspWeaknesses; if (Checkbox("Fraquezas e resistências (tipos de dano)", ref v)) _cfg.EspWeaknesses = v;
                 rowY = _cursorY;
                 v = _cfg.EspNames; if (CheckboxAt("Nome", ref v, _x, half + Pad)) _cfg.EspNames = v;
                 _cursorY = rowY;
@@ -152,14 +153,22 @@ public sealed class MenuSystem
                 break;
 
             case 1: // Coletáveis
-                v = _cfg.EspCollectibles; if (Checkbox("Coletáveis e arenas de chefes", ref v)) _cfg.EspCollectibles = v;
+                v = _cfg.EspCollectibles; if (Checkbox("Coletáveis (Milk Molar, Milk Nugget…)", ref v)) _cfg.EspCollectibles = v;
                 v = _cfg.EspArrows; if (Checkbox("Flechas no chão (Arrow)", ref v)) _cfg.EspArrows = v;
                 v = _cfg.EspDroplets; if (Checkbox("Gotas (Droplet, exceto sujas)", ref v)) _cfg.EspDroplets = v;
                 v = _cfg.EspRawScience; if (Checkbox("Raw Science (com quantidade)", ref v)) _cfg.EspRawScience = v;
                 v = _cfg.EspEggs; if (Checkbox("Ovos para chocar/domar (Hatching/Taming Egg)", ref v)) _cfg.EspEggs = v;
+                v = _cfg.EspUniqueChests; if (Checkbox("Baús únicos (Unique Chest)", ref v)) _cfg.EspUniqueChests = v;
+                v = _cfg.EspKeys; if (Checkbox("Chaves (Key)", ref v)) _cfg.EspKeys = v;
+                v = _cfg.EspTechChips; if (Checkbox("Tech Chips", ref v)) _cfg.EspTechChips = v;
+                v = _cfg.EspRecipes; if (Checkbox("Receitas (Recipe)", ref v)) _cfg.EspRecipes = v;
+                v = _cfg.EspBossArenas; if (Checkbox("Arenas de chefes", ref v)) _cfg.EspBossArenas = v;
+                v = _cfg.EspOrcTransmitters; if (Checkbox("Transmissor ORC (Burgle Quest Flag)", ref v)) _cfg.EspOrcTransmitters = v;
                 v = _cfg.ShowCollectedCollectibles; if (Checkbox("Mostrar já coletados", ref v)) _cfg.ShowCollectedCollectibles = v;
                 float cdist = _cfg.CollectibleMaxDistanceMeters;
                 if (Slider("cdist", "Distância máx. coletáveis", ref cdist, 20f, 1000f, "{0:F0} m")) _cfg.CollectibleMaxDistanceMeters = cdist;
+                float edist = _cfg.EggMaxDistanceMeters;
+                if (Slider("edist", "Dist. máx. longa (ovos, chips, chaves…)", ref edist, 20f, 10000f, "{0:F0} m")) _cfg.EggMaxDistanceMeters = edist;
                 break;
 
             case 2: // AimBot

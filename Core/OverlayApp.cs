@@ -160,7 +160,7 @@ public sealed class OverlayApp : IDisposable
                 }
 
                 _esp.Draw(_renderer, session.Camera, session.Entities!.Creatures);
-                if (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience || _cfg.EspEggs) _esp.DrawCollectibles(_renderer, session.Camera, session.Entities.Collectibles);
+                if (_cfg.AnyCollectibleEsp) _esp.DrawCollectibles(_renderer, session.Camera, session.Entities.Collectibles);
 
                 // AimBot: só com a janela do JOGO em foco (não o overlay) e o menu fechado.
                 bool gameHasFocus = Native.GetForegroundWindow() == _monitor.GameWindow;
@@ -237,7 +237,7 @@ public sealed class OverlayApp : IDisposable
                 _status.Add(!_block.MontageLayoutDetected
                     ? "Bloqueio: aguardando 1º ataque (calibração)"
                     : _block.Holding ? "Bloqueio: segurando" : $"Bloqueio: pronto (tecla {AutoBlock.KeyLabel(_cfg.AutoBlockKey)})");
-            if (s.Entities != null && (_cfg.EspCollectibles || _cfg.EspArrows || _cfg.EspDroplets || _cfg.EspRawScience || _cfg.EspEggs))
+            if (s.Entities != null && (_cfg.AnyCollectibleEsp))
                 _status.Add($"Coletáveis: {s.Entities.Collectibles.Count} rastreados · {_esp.CollectiblesDrawnLastFrame} na tela");
             _status.Add($"Layout: Actors {Ok(s.Layout.ActorsValidated)} · C2W {Ok(s.Layout.TransformValidated)} · Bounds {Ok(s.Layout.BoundsValidated)}");
             _status.Add($"Leituras/s: {_readsPerSec:F0}");

@@ -49,6 +49,12 @@ Para mais detalhe, rode com `G2Overlay.exe --debug`.
 - [ ] Criaturas atrás da câmera não são desenhadas; nada é desenhado acima de "Distância máx.".
 - [ ] O jogador local nunca aparece; outros jogadores só com "Mostrar jogadores".
 
+## Fraquezas
+
+- [ ] Com "Fraquezas e resistências" ligado, abaixo da caixa de criaturas aparecem "Fraco: …" (laranja) e/ou "Resiste: …" (cinza).
+- [ ] Com `--debug`, o log mostra `[Weak] BP_…: N multiplicadores de dano: [corpo: ×1.5 Spicy] …` uma vez por espécie.
+- [ ] Os valores batem com o Bestiário do jogo (Fraquezas/Resistências da criatura).
+
 ## Coletáveis (Milk Molars e Tech Chips)
 
 - [ ] Log: `Filtros de coletáveis: milkmolar, milknugget`.

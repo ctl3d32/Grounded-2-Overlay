@@ -43,6 +43,20 @@ public static class Off
     public static int SurvivalCharacter_DodgeComponent;
     public static int DodgeComponent_PerfectDodgeWindow;
     public static int HealthComponent_LastDamageInfo;
+    public static int HealthComponent_ColliderConfigs;
+    public static int SurvivalCharacter_StatusEffectComponent;
+    public static int StatusEffectComponent_StatusEffects;
+    public static int StatusEffectComponent_InfiniteDefaultStatusEffects;
+    public static int StatusEffect_RowHandle;
+    public static int StatusEffectData_Type;
+    public static int StatusEffectData_Value;
+    public static int StatusEffectData_DamageTypeFlags;
+    public static int StatusEffectData_DamageType;
+    public static int HealthColliderConfig_Size;
+    public static int HealthColliderConfig_ComponentName;
+    public static int HealthColliderConfig_DamageMultiplier;
+    public static int HealthColliderConfig_DamageTypeFlags;
+    public static int HealthColliderConfig_DamageType;
     public static int DamageInfo_DamageType;
     public static int DamageInfo_BlockType;
 
@@ -128,6 +142,20 @@ public static class Off
     public static int ScienceLiteData_ScienceAmount;
     public static int SpawnedItem_PlacedItemData;
     public static int SpawnedItem_Item;
+
+    // ---------------- Versão leve dos atores (sistema de LOD do Grounded: BaseLODActor é um UObject, não um ator)
+    public static int SurvivalGameState_LODActorManagerComponent;
+    public static int LODActorManagerComponent_LODActors;
+    public static int BaseLODActor_FullActor;
+    public static int BaseLODActor_ProxyActor;
+    public static int BaseLODActor_LODComponents;
+    public static int BaseLODActor_Location;
+    public static int ProxySpawnedItemActor_Item;
+    public static int ScanSwitch_bScanned;
+    public static int BaseLODActor_LiteData;
+    public static int LootBag_InventoryComponent;
+    public static int InventoryComponent_Items;
+    public static int ProxyLootBagActor_Items;
     public static int Item_ItemDataRowHandle;
     public static int SurvivalCharacter_TameableComponent;
     public static int TameableComponent_TameData;
@@ -150,6 +178,20 @@ public static class Off
         new("SurvivalDamageType.bCanPerfectDodge", "SurvivalDamageType", "bCanPerfectDodge", 0x64, OffsetSource.Reflected, "bool"),
         new("SurvivalDamageType.bCanBlock", "SurvivalDamageType", "bCanBlock", 0x65, OffsetSource.Reflected, "bool: false = ataque imbloqueável"),
         new("SurvivalCharacter.DodgeComponent", "SurvivalCharacter", "DodgeComponent", 0x13E8, OffsetSource.Reflected, "UDodgeComponent*"),
+        new("SurvivalCharacter.StatusEffectComponent", "SurvivalCharacter", "StatusEffectComponent", 0x13F0, OffsetSource.Reflected, "UStatusEffectComponent*"),
+        new("StatusEffectComponent.StatusEffects", "StatusEffectComponent", "StatusEffects", 0x1D0, OffsetSource.Reflected, "TArray<UStatusEffect*>"),
+        new("StatusEffectComponent.InfiniteDefaultStatusEffects", "StatusEffectComponent", "InfiniteDefaultStatusEffects", 0x1E0, OffsetSource.Reflected, "TArray<UStatusEffect*> (permanentes: fraquezas/resistências)"),
+        new("StatusEffect.StatusEffectRowHandle", "StatusEffect", "StatusEffectRowHandle", 0x70, OffsetSource.Reflected, "FDataTableRowHandle (DataTable + RowName)"),
+        new("StatusEffectData.Type", "StatusEffectData", "Type", 0x30, OffsetSource.Reflected, "EStatusEffectType (29 DamageReduction, 30 DamageReductionMultiplier)"),
+        new("StatusEffectData.Value", "StatusEffectData", "Value", 0x34, OffsetSource.Reflected, "float"),
+        new("StatusEffectData.DamageTypeFlags", "StatusEffectData", "DamageTypeFlags", 0x48, OffsetSource.Reflected, "uint32: bits de ESurvivalDamageTypeFlags"),
+        new("StatusEffectData.DamageType", "StatusEffectData", "DamageType", 0x50, OffsetSource.Reflected, "TSubclassOf<UDamageType>"),
+        new("HealthComponent.ColliderConfigs", "HealthComponent", "ColliderConfigs", 0x130, OffsetSource.Reflected, "TArray<FHealthColliderConfig>: multiplicadores de dano (fraquezas/resistências)"),
+        new("HealthColliderConfig.Size", "HealthColliderConfig", null, 0x58, OffsetSource.Engine, "sizeof(FHealthColliderConfig) (dump: 88)"),
+        new("HealthColliderConfig.ComponentName", "HealthColliderConfig", "ComponentName", 0x0, OffsetSource.Reflected, "FString"),
+        new("HealthColliderConfig.DamageMultiplier", "HealthColliderConfig", "DamageMultiplier", 0x10, OffsetSource.Reflected, "float"),
+        new("HealthColliderConfig.DamageTypeFlags", "HealthColliderConfig", "DamageTypeFlags", 0x48, OffsetSource.Reflected, "uint32: bits de ESurvivalDamageTypeFlags"),
+        new("HealthColliderConfig.DamageType", "HealthColliderConfig", "DamageType", 0x50, OffsetSource.Reflected, "TSubclassOf<UDamageType>"),
         new("HealthComponent.LastDamageInfo", "HealthComponent", "LastDamageInfo", 0x3B0, OffsetSource.Reflected, "FDamageInfo do último dano recebido"),
         new("DamageInfo.DamageType", "DamageInfo", "DamageType", 0x40, OffsetSource.Reflected, "TSubclassOf<UDamageType>"),
         new("DamageInfo.BlockType", "DamageInfo", "BlockType", 0x69, OffsetSource.Reflected, "EBlockType: 0 None, 1 Blocked, 2 PerfectBlock, 3 BlockBreak"),
@@ -239,6 +281,20 @@ public static class Off
         new("SpawnedItem.Item", "SpawnedItem", "Item", 0x548, OffsetSource.Reflected, "UItem* do item no chão"),
         new("Item.ItemDataRowHandle", "Item", "ItemDataRowHandle", 0x168, OffsetSource.Reflected, "FDataTableRowHandle_NetCrc32 (RowName @+0x8 = item)"),
 
+        // Versão leve (LOD): GameState → LODActorManagerComponent → LODActors[] (BaseLODActor*)
+        new("SurvivalGameState.LODActorManagerComponent", "SurvivalGameState", "LODActorManagerComponent", 0x3B8, OffsetSource.Reflected, "ULODActorManagerComponent*"),
+        new("LODActorManagerComponent.LODActors", "LODActorManagerComponent", "LODActors", 0xF0, OffsetSource.Reflected, "TArray<UBaseLODActor*> (versões leves de todos os atores rastreados)"),
+        new("BaseLODActor.FullActor", "BaseLODActor", null, 0xC0, OffsetSource.RuntimeDetected, "no jogo 0x10 além do dump; conferido em runtime · AActor* versão completa (null enquanto só existe a leve)"),
+        new("BaseLODActor.ProxyActor", "BaseLODActor", null, 0xC8, OffsetSource.RuntimeDetected, "no jogo 0x10 além do dump; conferido em runtime · UProxyActor* dados da versão leve"),
+        new("BaseLODActor.LODComponents", "BaseLODActor", null, 0xD0, OffsetSource.RuntimeDetected, "no jogo 0x10 além do dump; conferido em runtime · TArray<UBaseLODComponent*> (ex.: EggLODComponent)"),
+        new("BaseLODActor.Location", "BaseLODActor", null, 0x120, OffsetSource.RuntimeDetected, "FVector (double) da versão leve (não refletido; FTransform @0x100, conferido com a versão completa em runtime)"),
+        new("ProxySpawnedItemActor.Item", "ProxySpawnedItemActor", "Item", 0x1F0, OffsetSource.Reflected, "UItem* do item na versão leve"),
+        new("LootBag.InventoryComponent", "LootBag", "InventoryComponent", 0x390, OffsetSource.Reflected, "UInventoryComponent* (corpos com Tech Chip: BP_DeadBody_*TechChip*)"),
+        new("InventoryComponent.Items", "InventoryComponent", "Items", 0x1D0, OffsetSource.Reflected, "TArray<UItem*>"),
+        new("ProxyLootBagActor.Items", "ProxyLootBagActor", "Items", 0x208, OffsetSource.Reflected, "TArray<UItem*> do corpo na versão leve (conferido em runtime)"),
+        new("BaseLODActor.LiteData", "BaseLODActor", null, 0xF0, OffsetSource.RuntimeDetected, "UActorLiteData* (ex.: LD_World_Buried_UniqueChest_IceCart; não refletido, procurado em runtime)"),
+        new("ScanSwitch.bScanned", "ScanSwitch", "bScanned", 0x3A4, OffsetSource.Reflected, "bool: já escaneado/ativado (Transmissor ORC); replicado e salvo no save"),
+
         // Pets / buggies (criaturas domadas)
         new("SurvivalCharacter.TameableComponent", "SurvivalCharacter", "TameableComponent", 0x14A8, OffsetSource.Reflected, "UTameableComponent*"),
         new("TameableComponent.TameData", "TameableComponent", "TameData", 0x120, OffsetSource.Reflected, "UTamedCreatureData* (null = não domado)"),
@@ -289,6 +345,20 @@ public static class Off
         SurvivalCharacter_DodgeComponent = Values["SurvivalCharacter.DodgeComponent"];
         DodgeComponent_PerfectDodgeWindow = Values["DodgeComponent.PerfectDodgeWindow"];
         HealthComponent_LastDamageInfo = Values["HealthComponent.LastDamageInfo"];
+        HealthComponent_ColliderConfigs = Values["HealthComponent.ColliderConfigs"];
+        SurvivalCharacter_StatusEffectComponent = Values["SurvivalCharacter.StatusEffectComponent"];
+        StatusEffectComponent_StatusEffects = Values["StatusEffectComponent.StatusEffects"];
+        StatusEffectComponent_InfiniteDefaultStatusEffects = Values["StatusEffectComponent.InfiniteDefaultStatusEffects"];
+        StatusEffect_RowHandle = Values["StatusEffect.StatusEffectRowHandle"];
+        StatusEffectData_Type = Values["StatusEffectData.Type"];
+        StatusEffectData_Value = Values["StatusEffectData.Value"];
+        StatusEffectData_DamageTypeFlags = Values["StatusEffectData.DamageTypeFlags"];
+        StatusEffectData_DamageType = Values["StatusEffectData.DamageType"];
+        HealthColliderConfig_Size = Values["HealthColliderConfig.Size"];
+        HealthColliderConfig_ComponentName = Values["HealthColliderConfig.ComponentName"];
+        HealthColliderConfig_DamageMultiplier = Values["HealthColliderConfig.DamageMultiplier"];
+        HealthColliderConfig_DamageTypeFlags = Values["HealthColliderConfig.DamageTypeFlags"];
+        HealthColliderConfig_DamageType = Values["HealthColliderConfig.DamageType"];
         DamageInfo_DamageType = Values["DamageInfo.DamageType"];
         DamageInfo_BlockType = Values["DamageInfo.BlockType"];
 
@@ -372,6 +442,18 @@ public static class Off
         SpawnedItem_PlacedItemData = Values["SpawnedItem.PlacedItemData"];
         SpawnedItem_Item = Values["SpawnedItem.Item"];
         Item_ItemDataRowHandle = Values["Item.ItemDataRowHandle"];
+        SurvivalGameState_LODActorManagerComponent = Values["SurvivalGameState.LODActorManagerComponent"];
+        LODActorManagerComponent_LODActors = Values["LODActorManagerComponent.LODActors"];
+        BaseLODActor_FullActor = Values["BaseLODActor.FullActor"];
+        BaseLODActor_ProxyActor = Values["BaseLODActor.ProxyActor"];
+        BaseLODActor_LODComponents = Values["BaseLODActor.LODComponents"];
+        BaseLODActor_Location = Values["BaseLODActor.Location"];
+        ProxySpawnedItemActor_Item = Values["ProxySpawnedItemActor.Item"];
+        ScanSwitch_bScanned = Values["ScanSwitch.bScanned"];
+        BaseLODActor_LiteData = Values["BaseLODActor.LiteData"];
+        LootBag_InventoryComponent = Values["LootBag.InventoryComponent"];
+        InventoryComponent_Items = Values["InventoryComponent.Items"];
+        ProxyLootBagActor_Items = Values["ProxyLootBagActor.Items"];
         SurvivalCharacter_TameableComponent = Values["SurvivalCharacter.TameableComponent"];
         TameableComponent_TameData = Values["TameableComponent.TameData"];
         TamedCreatureData_TameState = Values["TamedCreatureData.TameState"];

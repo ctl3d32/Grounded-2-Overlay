@@ -18,6 +18,8 @@ public sealed class EspRenderer
     private static readonly D2DColor Outline = new(0f, 0f, 0f, 0.75f);
     private static readonly D2DColor TextColor = new(1f, 1f, 1f, 0.95f);
     private static readonly D2DColor DimText = new(0.85f, 0.85f, 0.85f, 0.9f);
+    private static readonly D2DColor WeaknessColor = new(1f, 0.72f, 0.3f, 1f);   // laranja-claro
+    private static readonly D2DColor ResistColor = new(0.6f, 0.68f, 0.75f, 0.95f); // cinza-azulado
     private static readonly D2DColor DeadColor = new(0.55f, 0.55f, 0.55f, 0.9f);
     private static readonly D2DColor WeakSpotColor = new(1f, 0.85f, 0.1f, 1f);
 
@@ -90,7 +92,23 @@ public sealed class EspRenderer
             }
 
             if (_cfg.EspTeam && c.Team.Length > 0)
+            {
                 r.DrawText(c.Team, cx, belowY, DimText, TextAlign.Center);
+                belowY += 14f;
+            }
+
+            // Fraquezas / resistências a tipos de dano
+            if (_cfg.EspWeaknesses && !c.IsDead && !c.IsPlayer)
+            {
+                if (c.Weakness.Length > 0)
+                {
+                    r.DrawText($"Fraco: {c.Weakness}", cx, belowY, WeaknessColor, TextAlign.Center);
+                    belowY += 14f;
+                }
+
+                if (c.Resistance.Length > 0)
+                    r.DrawText($"Resiste: {c.Resistance}", cx, belowY, ResistColor, TextAlign.Center);
+            }
 
             // 4) Pontos fracos
             if (_cfg.EspWeakSpots && c.HasWeakSpots && !c.IsDead)
@@ -152,7 +170,7 @@ public sealed class EspRenderer
                 continue;
             }
 
-            string label = c.Collected ? $"{c.Name} (coletado)" : c.BossActive ? $"{c.Name} (luta ativa)" : c.Name;
+            string label = c.Collected ? $"{c.Name} ({c.CollectedLabel})" : c.BossActive ? $"{c.Name} (luta ativa)" : c.Name;
             r.DrawText(label, cx, top - 17f, color, TextAlign.Center);
             if (_cfg.EspDistance)
                 r.DrawText($"{c.DistanceMeters:F0} m", cx, bottom + 2f, DimText, TextAlign.Center);

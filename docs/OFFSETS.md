@@ -336,3 +336,13 @@ Classes no dump (todas `… ► SpawnedItemDroplet ► SpawnedItem`):
 Regra: o ator deriva de `SpawnedItem`, o nome da classe contém "Droplet", nenhuma classe da cadeia contém "Dirty" e o RowName
 do item também não. Categoria própria (`DropletCategory = "droplet"`, opção `EspDroplets`), cor azul-claro. A gota some do ESP
 quando é bebida (o ator é destruído). Gotas distantes podem existir só como proxy (`ProxySpawnedItemDropletActor`) até o jogo carregá-las.
+
+## Fraquezas (ESP)
+
+| Offset | Valor | Descrição |
+|---|---|---|
+| `HealthComponent.ColliderConfigs` | `0x130` | TArray<FHealthColliderConfig> (0x58 bytes cada) |
+| `HealthColliderConfig.ComponentName` / `DamageMultiplier` / `DamageTypeFlags` / `DamageType` | `0x0` / `0x10` / `0x48` / `0x50` | FString / float / bits de ESurvivalDamageTypeFlags / classe de dano |
+
+ESurvivalDamageTypeFlags: Generic 0 (Smashing no jogo), Chopping 1, Mining 2 (Busting), Stabbing 3, Digging 4, Gas 5, Mint 6 (Fresh), Slashing 7,
+Burning 8, Explosive 9, Shock 10, Salty 11, Spicy 12, Acid 13, Pollen 14, PuffballGas 15, Shockwave 16, Sour 17, Freeze 21, Venom 22, Water 23.
