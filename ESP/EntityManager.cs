@@ -72,6 +72,9 @@ public sealed class EntityManager
     /// </summary>
     public const string UniqueChestCategory = "uniquechest";
 
+    /// <summary>Corpo (LootBag) com a Tirolesa no inventário (controlado por EspZipR). Some quando a Tirolesa é retirada.</summary>
+    public const string ZipCategory = "zipr";
+
     private static bool IsUniqueChestName(string s)
     {
         string n = ObjectReader.Normalize(s);
@@ -505,7 +508,7 @@ public sealed class EntityManager
     private void RefreshFilters()
     {
         string key = string.Join("|", _cfg.CollectibleFilters) + "#" + string.Join("|", _cfg.CollectibleItemTokens) +
-                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}{_cfg.EspRawScience}{_cfg.EspEggs}{_cfg.EspOrcTransmitters}{_cfg.EspBossArenas}{_cfg.EspRecipes}{_cfg.EspTechChips}{_cfg.EspKeys}{_cfg.EspUniqueChests}";
+                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}{_cfg.EspRawScience}{_cfg.EspEggs}{_cfg.EspOrcTransmitters}{_cfg.EspBossArenas}{_cfg.EspRecipes}{_cfg.EspTechChips}{_cfg.EspKeys}{_cfg.EspUniqueChests}{_cfg.EspZipR}";
         if (key == _filtersKey) return;
         _filtersKey = key;
         _filters = _cfg.CollectibleFilters.Select(ObjectReader.Normalize).Where(f => f.Length > 0).Distinct().ToArray();
@@ -542,7 +545,32 @@ public sealed class EntityManager
     /// </summary>
     private Collectible? TryBuildCollectible(ulong actor, ulong cls, ClassInfo ci)
     {
-        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets && !_cfg.EspRawScience && !_cfg.EspEggs && !_cfg.EspOrcTransmitters && !_cfg.EspBossArenas && !_cfg.EspRecipes && !_cfg.EspTechChips && !_cfg.EspKeys && !_cfg.EspUniqueChests) return null;
+        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets && !_cfg.EspRawScience && !_cfg.EspEggs && !_cfg.EspOrcTransmitters && !_cfg.EspBossArenas && !_cfg.EspRecipes && !_cfg.EspTechChips && !_cfg.EspKeys && !_cfg.EspUniqueChests && !_cfg.EspZipR) return null;
+
+        // Corpo com a Tirolesa no inventário: decidido por ator (o inventário), não pela classe.
+        if (_cfg.EspZipR && Array.IndexOf(ci.Chain, "LootBag") >= 0)
+        {
+            string zip = FirstZipRow(InventoryItems(actor));
+            if (zip.Length > 0)
+            {
+                var zc = new Collectible
+                {
+                    Actor = actor,
+                    ClassPtr = cls,
+                    Class = ci,
+                    Filter = ZipCategory,
+                    MatchedBy = "inventário",
+                    ColorHex = ColorFor(ZipCategory),
+                    RootComponent = _mem.ReadPtr(actor + (ulong)Off.Actor_RootComponent),
+                    IsLootBody = true,
+                    CollectedLabel = "sem Tirolesa",
+                    Name = ZipBodyName,
+                };
+                if (!ProcessMemory.IsValidObjectPointer(zc.RootComponent)) return null;
+                Logger.Info(Cat, $"Novo coletável: '{zc.Name}' [{ci.Name}] item='{zip}' actor=0x{actor:X}");
+                return zc;
+            }
+        }
 
         string? filter = null, matchedBy = null, rowName = "";
         string? classFilter = ci.CollectibleMatch;
@@ -968,7 +996,7 @@ public sealed class EntityManager
     {
         int budget = LodClassifyBudgetPerScan;
         LodActive = false;
-        if ((!_cfg.EspEggs && !_cfg.EspRecipes && !_cfg.EspTechChips && !_cfg.EspKeys && !_cfg.EspUniqueChests) || _world.World == 0) return 0;
+        if ((!_cfg.EspEggs && !_cfg.EspRecipes && !_cfg.EspTechChips && !_cfg.EspKeys && !_cfg.EspUniqueChests && !_cfg.EspZipR) || _world.World == 0) return 0;
 
         ulong gs = _mem.ReadPtr(_world.World + (ulong)Off.World_GameState);
         ulong mgr = ProcessMemory.IsValidObjectPointer(gs) ? _mem.ReadPtr(gs + (ulong)Off.SurvivalGameState_LODActorManagerComponent) : 0;
@@ -1119,7 +1147,7 @@ public sealed class EntityManager
         }
 
         if (!candidate) return null;
-        if (Array.IndexOf(ci.Chain, "LootBagLODActor") >= 0) return _cfg.EspTechChips ? TryBuildLodBody(lod, cls, ci) : null;
+        if (Array.IndexOf(ci.Chain, "LootBagLODActor") >= 0) return _cfg.EspTechChips || _cfg.EspZipR ? TryBuildLodBody(lod, cls, ci) : null;
         if (Array.IndexOf(ci.Chain, "HarvestNodeLODActor") >= 0) return _cfg.EspUniqueChests ? TryBuildLodChest(lod, cls, ci) : null;
 
         // Nome do item: versão completa (se existir) ou o UItem guardado na versão leve.
@@ -1156,7 +1184,9 @@ public sealed class EntityManager
         }
 
         string category;
-        if (_cfg.EspEggs && (IsEggName(row) || HasLodComponent(lod, "EggLODComponent"))) category = EggCategory;
+        // EggLODComponent também existe em ovos comuns de formiga (RowName "AntEgg", item de colônia/comida): só vale
+        // como critério quando o nome do item não pôde ser lido.
+        if (_cfg.EspEggs && (IsEggName(row) || (row.Length == 0 && HasLodComponent(lod, "EggLODComponent")))) category = EggCategory;
         else if (_cfg.EspRecipes && IsRecipeName(row)) category = RecipeCategory;
         else if (_cfg.EspTechChips && IsTechChipName(row)) category = TechChipCategory;
         else if (_cfg.EspKeys && IsKeyName(row)) category = KeyCategory;
@@ -1461,22 +1491,38 @@ public sealed class EntityManager
         return null;
     }
 
-    /// <summary>Corpo na versão leve: vale se a versão completa for um corpo "TechChip" ou se o inventário tiver um Tech Chip.</summary>
+    /// <summary>
+    /// Corpo na versão leve. Tirolesa: o inventário (da versão completa, se existir, ou do proxy) tem um item "Zip…".
+    /// Tech Chip: a versão completa é um corpo "TechChip" ou o inventário tem um Tech Chip.
+    /// </summary>
     private Collectible? TryBuildLodBody(ulong lod, ulong cls, ClassInfo ci)
     {
-        string chip = "";
         ulong full = _mem.ReadPtr(lod + (ulong)Off.BaseLODActor_FullActor);
+        ClassInfo? fci = null;
+        List<ulong>? items;
         if (ProcessMemory.IsValidObjectPointer(full))
         {
-            var fci = _obj.GetObjectClassInfo(full);
+            fci = _obj.GetObjectClassInfo(full);
             if (fci == null || Array.IndexOf(fci.Chain, "LootBag") < 0) return null;
-            chip = FirstTechChipRow(InventoryItems(full));
-            if (chip.Length == 0 && !IsTechChipName(fci.Name)) return null;
+            items = InventoryItems(full);
         }
         else
         {
-            chip = FirstTechChipRow(ProxyItems(_mem.ReadPtr(lod + (ulong)Off.BaseLODActor_ProxyActor)));
-            if (chip.Length == 0) return null; // sem chip (ou já saqueado)
+            items = ProxyItems(_mem.ReadPtr(lod + (ulong)Off.BaseLODActor_ProxyActor));
+        }
+
+        string category, row;
+        if (_cfg.EspZipR && (row = FirstZipRow(items)).Length > 0)
+        {
+            category = ZipCategory;
+        }
+        else if (_cfg.EspTechChips && ((row = FirstTechChipRow(items)).Length > 0 || (fci != null && IsTechChipName(fci.Name))))
+        {
+            category = TechChipCategory;
+        }
+        else
+        {
+            return null; // sem Tirolesa / chip (ou já saqueado)
         }
 
         var c = new Collectible
@@ -1484,26 +1530,54 @@ public sealed class EntityManager
             Actor = lod,
             ClassPtr = cls,
             Class = ci,
-            Filter = TechChipCategory,
+            Filter = category,
             MatchedBy = "versão leve",
-            ColorHex = ColorFor(TechChipCategory),
+            ColorHex = ColorFor(category),
             IsLod = true,
             IsLootBody = true,
-            CollectedLabel = "vazio",
-            Name = BodyName(chip),
+            CollectedLabel = category == ZipCategory ? "sem Tirolesa" : "vazio",
+            Name = category == ZipCategory ? ZipBodyName : BodyName(row),
         };
-        Logger.Info(Cat, $"Novo item pela versão leve (techchip, corpo): '{c.Name}' row='{chip}' lod=0x{lod:X} completa=0x{full:X}");
+        Logger.Info(Cat, $"Novo item pela versão leve ({category}, corpo): '{c.Name}' row='{row}' lod=0x{lod:X} completa=0x{full:X}");
         return c;
     }
 
-    /// <summary>Inventário vazio? Versão leve: da versão completa se existir, senão do proxy (ilegível = não vazio).</summary>
-    private bool LootBodyEmpty(Collectible c)
+    private const string ZipBodyName = "Corpo com Tirolesa";
+
+    /// <summary>
+    /// Tirolesa (ferramenta; "Tirolesa" é o nome em português): RowName interno em inglês com "zip" (ex.: "Zipline…")
+    /// ou "tirolesa". O nome exato fica registrado no log quando o corpo é encontrado.
+    /// </summary>
+    private static bool IsZipName(string s)
+    {
+        string n = ObjectReader.Normalize(s);
+        return n.Contains("zip", StringComparison.Ordinal) || n.Contains("tirolesa", StringComparison.Ordinal);
+    }
+
+    private string FirstZipRow(List<ulong>? items)
+    {
+        if (items == null) return "";
+        foreach (ulong it in items)
+        {
+            string row = ReadRowName(it + (ulong)Off.Item_ItemDataRowHandle + (ulong)Off.DataTableRowHandle_RowName);
+            if (IsZipName(row)) return row;
+        }
+
+        return "";
+    }
+
+    /// <summary>
+    /// Corpo já saqueado? Tech Chip: inventário vazio. Tirolesa: ela saiu do inventário. Versão leve: lê da versão
+    /// completa se existir, senão do proxy (ilegível = ainda não saqueado).
+    /// </summary>
+    private bool LootBodyDone(Collectible c)
     {
         List<ulong>? items;
         if (!c.IsLod) items = InventoryItems(c.Actor);
         else if (ProcessMemory.IsValidObjectPointer(c.LodFullActor)) items = InventoryItems(c.LodFullActor);
         else items = ProxyItems(_mem.ReadPtr(c.Actor + (ulong)Off.BaseLODActor_ProxyActor));
-        return items != null && items.Count == 0;
+        if (items == null) return false;
+        return c.Filter == ZipCategory ? FirstZipRow(items).Length == 0 : items.Count == 0;
     }
 
     private bool HasLodComponent(ulong lod, string className)
@@ -1673,6 +1747,7 @@ public sealed class EntityManager
                 TechChipCategory => _cfg.EspTechChips,
                 KeyCategory => _cfg.EspKeys,
                 UniqueChestCategory => _cfg.EspUniqueChests,
+                ZipCategory => _cfg.EspZipR,
                 _ => _cfg.EspCollectibles,
             };
             if (!enabled) continue;
@@ -1691,7 +1766,7 @@ public sealed class EntityManager
             }
 
             c.DistanceMeters = c.Location.DistanceTo(cam.Location) / 100.0;
-            if (c.DistanceMeters > (c.Filter is EggCategory or OrcTransmitterCategory or BossCategory or RecipeCategory or TechChipCategory or KeyCategory or UniqueChestCategory ? eggDist : maxDist)) continue;
+            if (c.DistanceMeters > (c.Filter is EggCategory or OrcTransmitterCategory or BossCategory or RecipeCategory or TechChipCategory or KeyCategory or UniqueChestCategory or ZipCategory ? eggDist : maxDist)) continue;
 
             // HealthState == Dead → nó já quebrado (molar coletado).
             c.Collected = c.HealthComponent != 0 &&
@@ -1699,12 +1774,12 @@ public sealed class EntityManager
             // Corpo com Tech Chip: inventário vazio → já saqueado (oculto).
             if (c.IsLootBody)
             {
-                c.Collected = LootBodyEmpty(c);
+                c.Collected = LootBodyDone(c);
                 int st2 = c.Collected ? 1 : 0;
                 if (st2 != c.LoggedState)
                 {
                     c.LoggedState = st2;
-                    Logger.Info(Cat, $"{c.Name} 0x{c.Actor:X} a {c.DistanceMeters:F0} m: {(c.Collected ? "inventário vazio (oculto)" : "com itens")}.");
+                    Logger.Info(Cat, $"{c.Name} 0x{c.Actor:X} a {c.DistanceMeters:F0} m: {(c.Collected ? (c.Filter == ZipCategory ? "Tirolesa não está mais no inventário (oculto)" : "inventário vazio (oculto)") : "com itens")}.");
                 }
             }
 

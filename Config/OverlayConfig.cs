@@ -70,8 +70,11 @@ public sealed class OverlayConfig
     /// <summary>Baús únicos enterrados (BP_World_Buried_UniqueChest_*), separados dos coletáveis; mostrados pela versão leve. Usa EggMaxDistanceMeters.</summary>
     public bool EspUniqueChests { get; set; } = true;
 
+    /// <summary>Corpo com a Tirolesa no inventário; some quando a Tirolesa é retirada. Usa EggMaxDistanceMeters.</summary>
+    public bool EspZipR { get; set; } = true;
+
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool AnyCollectibleEsp => EspCollectibles || EspArrows || EspDroplets || EspRawScience || EspEggs || EspOrcTransmitters || EspBossArenas || EspRecipes || EspTechChips || EspKeys || EspUniqueChests;
+    public bool AnyCollectibleEsp => EspCollectibles || EspArrows || EspDroplets || EspRawScience || EspEggs || EspOrcTransmitters || EspBossArenas || EspRecipes || EspTechChips || EspKeys || EspUniqueChests || EspZipR;
 
     /// <summary>
     /// Distância máxima (m) dos ovos. Eles são mostrados pela versão leve (BaseLODActor, existe a qualquer distância);
@@ -107,6 +110,7 @@ public sealed class OverlayConfig
         ["rawscience"] = "#FF80AB",
         ["egg"] = "#F5DEB3",
         ["orctransmitter"] = "#FF9800",
+        ["zipr"] = "#00E5FF",
     };
     public string CollectibleColor { get; set; } = "#00E5FF";
 
@@ -296,6 +300,7 @@ public sealed class OverlayConfig
         CollectibleColors.TryAdd("rawscience", "#FF80AB");
         CollectibleColors.TryAdd("egg", "#F5DEB3");
         CollectibleColors.TryAdd("orctransmitter", "#FF9800");
+        CollectibleColors.TryAdd("zipr", "#00E5FF");
         if (BoxSource != "Mesh" && BoxSource != "Capsule") BoxSource = "Mesh";
         if (string.IsNullOrWhiteSpace(ProcessName)) ProcessName = "Grounded2Steam-Win64-Shipping";
     }
