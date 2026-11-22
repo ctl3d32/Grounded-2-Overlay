@@ -73,8 +73,11 @@ public sealed class OverlayConfig
     /// <summary>Corpo com a Tirolesa no inventário; some quando a Tirolesa é retirada. Usa EggMaxDistanceMeters.</summary>
     public bool EspZipR { get; set; } = true;
 
+    /// <summary>Rochas explosivas (BP_Bombable_Rock_C); somem quando destruídas. Usa EggMaxDistanceMeters.</summary>
+    public bool EspBombableRocks { get; set; } = true;
+
     [System.Text.Json.Serialization.JsonIgnore]
-    public bool AnyCollectibleEsp => EspCollectibles || EspArrows || EspDroplets || EspRawScience || EspEggs || EspOrcTransmitters || EspBossArenas || EspRecipes || EspTechChips || EspKeys || EspUniqueChests || EspZipR;
+    public bool AnyCollectibleEsp => EspCollectibles || EspArrows || EspDroplets || EspRawScience || EspEggs || EspOrcTransmitters || EspBossArenas || EspRecipes || EspTechChips || EspKeys || EspUniqueChests || EspZipR || EspBombableRocks;
 
     /// <summary>
     /// Distância máxima (m) dos ovos. Eles são mostrados pela versão leve (BaseLODActor, existe a qualquer distância);
@@ -111,6 +114,7 @@ public sealed class OverlayConfig
         ["egg"] = "#F5DEB3",
         ["orctransmitter"] = "#FF9800",
         ["zipr"] = "#00E5FF",
+        ["bombablerock"] = "#A1887F",
     };
     public string CollectibleColor { get; set; } = "#00E5FF";
 
@@ -301,6 +305,7 @@ public sealed class OverlayConfig
         CollectibleColors.TryAdd("egg", "#F5DEB3");
         CollectibleColors.TryAdd("orctransmitter", "#FF9800");
         CollectibleColors.TryAdd("zipr", "#00E5FF");
+        CollectibleColors.TryAdd("bombablerock", "#A1887F");
         if (BoxSource != "Mesh" && BoxSource != "Capsule") BoxSource = "Mesh";
         if (string.IsNullOrWhiteSpace(ProcessName)) ProcessName = "Grounded2Steam-Win64-Shipping";
     }

@@ -153,6 +153,8 @@ public static class Off
     public static int ProxySpawnedItemActor_Item;
     public static int ScanSwitch_bScanned;
     public static int BaseLODActor_LiteData;
+    public static int Switch_OCLComponent;
+    public static int OCLComponent_Flags;
     public static int LootBag_InventoryComponent;
     public static int InventoryComponent_Items;
     public static int ProxyLootBagActor_Items;
@@ -293,6 +295,8 @@ public static class Off
         new("InventoryComponent.Items", "InventoryComponent", "Items", 0x1D0, OffsetSource.Reflected, "TArray<UItem*>"),
         new("ProxyLootBagActor.Items", "ProxyLootBagActor", "Items", 0x208, OffsetSource.Reflected, "TArray<UItem*> do corpo na versão leve (conferido em runtime)"),
         new("BaseLODActor.LiteData", "BaseLODActor", null, 0xF0, OffsetSource.RuntimeDetected, "UActorLiteData* (ex.: LD_World_Buried_UniqueChest_IceCart; não refletido, procurado em runtime)"),
+        new("Switch.OCLComponent", "Switch", "OCLComponent", 0x308, OffsetSource.Reflected, "UOCLComponent* (abrir/fechar/trancar; baús BP_UniqueTreasureChest_*)"),
+        new("OCLComponent.Flags", "OCLComponent", "bIsOpen", 0x118, OffsetSource.Reflected, "bitfield: bStartLocked 0x1, bUnlockAlsoOpens 0x2, bConsumeKey 0x4, bIsLocked 0x8, bIsOpen 0x10, bAllowInteractToOpen 0x20"),
         new("ScanSwitch.bScanned", "ScanSwitch", "bScanned", 0x3A4, OffsetSource.Reflected, "bool: já escaneado/ativado (Transmissor ORC); replicado e salvo no save"),
 
         // Pets / buggies (criaturas domadas)
@@ -451,6 +455,8 @@ public static class Off
         ProxySpawnedItemActor_Item = Values["ProxySpawnedItemActor.Item"];
         ScanSwitch_bScanned = Values["ScanSwitch.bScanned"];
         BaseLODActor_LiteData = Values["BaseLODActor.LiteData"];
+        Switch_OCLComponent = Values["Switch.OCLComponent"];
+        OCLComponent_Flags = Values["OCLComponent.Flags"];
         LootBag_InventoryComponent = Values["LootBag.InventoryComponent"];
         InventoryComponent_Items = Values["InventoryComponent.Items"];
         ProxyLootBagActor_Items = Values["ProxyLootBagActor.Items"];

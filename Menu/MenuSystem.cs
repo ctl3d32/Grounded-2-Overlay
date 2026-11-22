@@ -158,6 +158,7 @@ public sealed class MenuSystem
                 v = _cfg.EspDroplets; if (Checkbox("Gotas (Droplet, exceto sujas)", ref v)) _cfg.EspDroplets = v;
                 v = _cfg.EspRawScience; if (Checkbox("Raw Science (com quantidade)", ref v)) _cfg.EspRawScience = v;
                 v = _cfg.EspEggs; if (Checkbox("Ovos para chocar/domar (Hatching/Taming Egg)", ref v)) _cfg.EspEggs = v;
+                v = _cfg.EspBombableRocks; if (Checkbox("Rochas explosivas (Bombable Rock)", ref v)) _cfg.EspBombableRocks = v;
                 v = _cfg.EspZipR; if (Checkbox("Corpo com Tirolesa", ref v)) _cfg.EspZipR = v;
                 v = _cfg.EspUniqueChests; if (Checkbox("Baús únicos (Unique Chest)", ref v)) _cfg.EspUniqueChests = v;
                 v = _cfg.EspKeys; if (Checkbox("Chaves (Key)", ref v)) _cfg.EspKeys = v;

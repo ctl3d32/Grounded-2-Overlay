@@ -34,6 +34,9 @@ public sealed class Collectible
     /// <summary>Corpo (LootBag) com Tech Chip: inventário vazio → tratado como coletado.</summary>
     public bool IsLootBody;
 
+    /// <summary>Baú BP_UniqueTreasureChest_* (Switch): aberto (OCLComponent.bIsOpen) → tratado como coletado.</summary>
+    public bool IsTreasureChest;
+
     /// <summary>Texto entre parênteses quando Collected (ex.: "coletado", "ativado", "vazio").</summary>
     public string CollectedLabel = "coletado";
 
@@ -116,10 +119,18 @@ public sealed class Collectible
     /// <summary>"BP_World_Buried_UniqueChest_IceCart_C" → "Unique Chest (Ice Cart)".</summary>
     public static string UniqueChestName(string className)
     {
-        const string marker = "UniqueChest_";
-        int i = className.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
-        if (i < 0) return "Unique Chest";
-        string rest = className[(i + marker.Length)..];
+        string rest = "";
+        bool found = false;
+        foreach (string marker in new[] { "UniqueTreasureChest_", "UniqueOminentChest_", "UniqueChest_" })
+        {
+            int i = className.IndexOf(marker, StringComparison.OrdinalIgnoreCase);
+            if (i < 0) continue;
+            rest = className[(i + marker.Length)..];
+            found = true;
+            break;
+        }
+
+        if (!found) return "Unique Chest";
         if (rest.EndsWith("_C", StringComparison.Ordinal)) rest = rest[..^2];
         return rest.Length > 0 && !rest.Equals("Base", StringComparison.OrdinalIgnoreCase)
             ? $"Unique Chest ({Prettify(rest)})"

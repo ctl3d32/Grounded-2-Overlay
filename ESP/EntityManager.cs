@@ -75,10 +75,17 @@ public sealed class EntityManager
     /// <summary>Corpo (LootBag) com a Tirolesa no inventário (controlado por EspZipR). Some quando a Tirolesa é retirada.</summary>
     public const string ZipCategory = "zipr";
 
+    /// <summary>Rochas explosivas (BP_Bombable_Rock_C → BP_StaticHarvestNode_C → HarvestNode; controlado por EspBombableRocks).</summary>
+    public const string BombableRockCategory = "bombablerock";
+    private const string BombableRockName = "Bombable Rock";
+
+    private static bool IsBombableRockName(string s) => ObjectReader.Normalize(s).Contains("bombablerock", StringComparison.Ordinal);
+
     private static bool IsUniqueChestName(string s)
     {
         string n = ObjectReader.Normalize(s);
-        return n.Contains("uniquechest", StringComparison.Ordinal) || n.Contains("uniqueominentchest", StringComparison.Ordinal);
+        return n.Contains("uniquechest", StringComparison.Ordinal) || n.Contains("uniqueominentchest", StringComparison.Ordinal) ||
+               n.Contains("uniquetreasurechest", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -194,7 +201,9 @@ public sealed class EntityManager
         _lodLayoutValidated = false;
         _lodLayoutBroken = false;
         _proxyItemsOff = -1;
-        _lodLiteDataOff = -1;
+        _lodIdentityOff = -1;
+        _lodIdentityInner = -1;
+        _lodIdentityTries = 0;
         _lodManager = 0;
         LodActive = false;
         _initialScanDone = false;
@@ -508,7 +517,7 @@ public sealed class EntityManager
     private void RefreshFilters()
     {
         string key = string.Join("|", _cfg.CollectibleFilters) + "#" + string.Join("|", _cfg.CollectibleItemTokens) +
-                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}{_cfg.EspRawScience}{_cfg.EspEggs}{_cfg.EspOrcTransmitters}{_cfg.EspBossArenas}{_cfg.EspRecipes}{_cfg.EspTechChips}{_cfg.EspKeys}{_cfg.EspUniqueChests}{_cfg.EspZipR}";
+                     $"#{_cfg.EspCollectibles}{_cfg.EspArrows}{_cfg.EspDroplets}{_cfg.EspRawScience}{_cfg.EspEggs}{_cfg.EspOrcTransmitters}{_cfg.EspBossArenas}{_cfg.EspRecipes}{_cfg.EspTechChips}{_cfg.EspKeys}{_cfg.EspUniqueChests}{_cfg.EspZipR}{_cfg.EspBombableRocks}";
         if (key == _filtersKey) return;
         _filtersKey = key;
         _filters = _cfg.CollectibleFilters.Select(ObjectReader.Normalize).Where(f => f.Length > 0).Distinct().ToArray();
@@ -545,7 +554,7 @@ public sealed class EntityManager
     /// </summary>
     private Collectible? TryBuildCollectible(ulong actor, ulong cls, ClassInfo ci)
     {
-        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets && !_cfg.EspRawScience && !_cfg.EspEggs && !_cfg.EspOrcTransmitters && !_cfg.EspBossArenas && !_cfg.EspRecipes && !_cfg.EspTechChips && !_cfg.EspKeys && !_cfg.EspUniqueChests && !_cfg.EspZipR) return null;
+        if (_filters.Length == 0 && _itemTokens.Length == 0 && !_cfg.EspArrows && !_cfg.EspDroplets && !_cfg.EspRawScience && !_cfg.EspEggs && !_cfg.EspOrcTransmitters && !_cfg.EspBossArenas && !_cfg.EspRecipes && !_cfg.EspTechChips && !_cfg.EspKeys && !_cfg.EspUniqueChests && !_cfg.EspZipR && !_cfg.EspBombableRocks) return null;
 
         // Corpo com a Tirolesa no inventário: decidido por ator (o inventário), não pela classe.
         if (_cfg.EspZipR && Array.IndexOf(ci.Chain, "LootBag") >= 0)
@@ -596,6 +605,14 @@ public sealed class EntityManager
 
             // Baús únicos: BP_World_Buried_UniqueChest_IceCart_C → BP_World_Buried_UniqueChest_Base_C → … → HarvestNode.
             if (Array.IndexOf(ci.Chain, "HarvestNode") >= 0 && ci.Chain.TakeWhile(n => n != "HarvestNode").Any(IsUniqueChestName))
+                classFilter = UniqueChestCategory;
+
+            // Rochas explosivas: BP_Bombable_Rock_C → BP_StaticHarvestNode_C → HarvestNode (NodeData "Bombable_Rock").
+            if (Array.IndexOf(ci.Chain, "HarvestNode") >= 0 && ci.Chain.TakeWhile(n => n != "HarvestNode").Any(IsBombableRockName))
+                classFilter = BombableRockCategory;
+
+            // Baús de tesouro únicos: BP_UniqueTreasureChest_CoaltanaMats_C → BP_UniqueTreasureChest_Base_C → Switch.
+            if (Array.IndexOf(ci.Chain, "Switch") >= 0 && ci.Chain.TakeWhile(n => n != "Switch").Any(IsUniqueChestName))
                 classFilter = UniqueChestCategory;
 
             // Chaves: palavra "Key" numa classe do item no chão (independe de CollectibleItemTokens).
@@ -745,6 +762,17 @@ public sealed class EntityManager
         {
             c.Name = "Transmissor ORC";
             c.CollectedLabel = "ativado";
+        }
+        else if (filter == BombableRockCategory)
+        {
+            c.Name = BombableRockName;
+            c.CollectedLabel = "destruída";
+        }
+        else if (filter == UniqueChestCategory && Array.IndexOf(ci.Chain, "Switch") >= 0)
+        {
+            c.IsTreasureChest = true;
+            c.CollectedLabel = "aberto";
+            c.Name = Collectible.UniqueChestName(ci.Name);
         }
         else if (filter == TechChipCategory && Array.IndexOf(ci.Chain, "LootBag") >= 0)
         {
@@ -996,7 +1024,7 @@ public sealed class EntityManager
     {
         int budget = LodClassifyBudgetPerScan;
         LodActive = false;
-        if ((!_cfg.EspEggs && !_cfg.EspRecipes && !_cfg.EspTechChips && !_cfg.EspKeys && !_cfg.EspUniqueChests && !_cfg.EspZipR) || _world.World == 0) return 0;
+        if ((!_cfg.EspEggs && !_cfg.EspRecipes && !_cfg.EspTechChips && !_cfg.EspKeys && !_cfg.EspUniqueChests && !_cfg.EspZipR && !_cfg.EspBombableRocks) || _world.World == 0) return 0;
 
         ulong gs = _mem.ReadPtr(_world.World + (ulong)Off.World_GameState);
         ulong mgr = ProcessMemory.IsValidObjectPointer(gs) ? _mem.ReadPtr(gs + (ulong)Off.SurvivalGameState_LODActorManagerComponent) : 0;
@@ -1023,7 +1051,7 @@ public sealed class EntityManager
         var span = _lodBuffer.AsSpan(0, arr.Num);
         if (!_mem.ReadArray(arr.Data, span)) return 0;
         if (_lodLayoutBroken || (!_lodLayoutValidated && !DetectLodLayout(span))) return 0;
-        if (_cfg.EspUniqueChests && _lodLiteDataOff == -1) DetectLiteDataOffset(span);
+        if ((_cfg.EspUniqueChests || _cfg.EspBombableRocks) && _lodIdentityOff == -1 && _lodIdentityTries++ % 10 == 0) LearnHarvestIdentity(span);
         LodActive = true;
         LodActorCount = arr.Num;
 
@@ -1148,7 +1176,7 @@ public sealed class EntityManager
 
         if (!candidate) return null;
         if (Array.IndexOf(ci.Chain, "LootBagLODActor") >= 0) return _cfg.EspTechChips || _cfg.EspZipR ? TryBuildLodBody(lod, cls, ci) : null;
-        if (Array.IndexOf(ci.Chain, "HarvestNodeLODActor") >= 0) return _cfg.EspUniqueChests ? TryBuildLodChest(lod, cls, ci) : null;
+        if (Array.IndexOf(ci.Chain, "HarvestNodeLODActor") >= 0) return _cfg.EspUniqueChests || _cfg.EspBombableRocks ? TryBuildLodHarvest(lod, cls, ci) : null;
 
         // Nome do item: versão completa (se existir) ou o UItem guardado na versão leve.
         bool Wanted(string r) => (_cfg.EspEggs && IsEggName(r)) || (_cfg.EspRecipes && IsRecipeName(r)) ||
@@ -1358,73 +1386,208 @@ public sealed class EntityManager
 
     // ------------------------------------------------------------------ baús únicos (HarvestNode) pela versão leve
 
-    // -1 = ainda não procurado; -2 = não encontrado.
-    private int _lodLiteDataOff = -1;
+    // Onde a versão leve de um HarvestNode guarda a identidade do tipo (aprendido em runtime).
+    // -1 = ainda não aprendido; -2 = não encontrado.
+    private int _lodIdentityOff = -1;
+    private string _lodIdentityKind = "";
+    private int _lodIdentityTries;
+    private int _lodIdentityInner = -1; // ≥ 0: o campo está em (ponteiro em _lodIdentityOff) + _lodIdentityInner
 
     /// <summary>
-    /// Offset do ponteiro UActorLiteData* dentro do BaseLODActor (não refletido): em até 64 versões leves de HarvestNode,
-    /// procura entre 0x28 e 0x298 um ponteiro para um objeto de classe *LiteData; vale o offset mais votado.
+    /// Aprende onde o HarvestNodeLODActor guarda o tipo do nó (não refletido). Usa versões leves cuja versão completa
+    /// existe (nós perto do jogador): procura, entre 0x28 e 0x298, um qword igual a (a) ponteiro para a UClass da versão
+    /// completa, (b) ponteiro para o LiteData dela (HarvestNode +0x3A8), ou o FName (c) da classe ou (d) do LiteData.
+    /// Vale o par (tipo, offset) mais votado.
     /// </summary>
-    private void DetectLiteDataOffset(ReadOnlySpan<ulong> lods)
+    private void LearnHarvestIdentity(ReadOnlySpan<ulong> lods)
     {
-        var votes = new Dictionary<int, int>();
-        var buf = new byte[0x298 - 0x28 + 8];
+        const int start = 0x28, end = 0x298;
+        const int innerLen = 0xC0;
+        var votes = new Dictionary<(string Kind, int Off, int Inner), int>();
+        var buf = new byte[end - start];
+        var inner = new byte[innerLen];
         int samples = 0;
         foreach (ulong lod in lods)
         {
             if (samples >= 64) break;
             if (!ProcessMemory.IsValidObjectPointer(lod)) continue;
             var ci = _obj.GetObjectClassInfo(lod);
-            if (ci == null || Array.IndexOf(ci.Chain, "HarvestNodeLODActor") < 0 || !_mem.ReadBytes(lod + 0x28, buf)) continue;
+            if (ci == null || Array.IndexOf(ci.Chain, "HarvestNodeLODActor") < 0) continue;
+            ulong full = _mem.ReadPtr(lod + (ulong)Off.BaseLODActor_FullActor);
+            if (!ProcessMemory.IsValidObjectPointer(full)) continue;
+            ulong fullClass = _obj.GetClass(full);
+            if (!ProcessMemory.IsValidObjectPointer(fullClass) || !_mem.ReadBytes(lod + start, buf)) continue;
+            ulong lite = _mem.ReadPtr(full + 0x3A8);
+            ulong classFName = _mem.Read<ulong>(fullClass + (ulong)Off.UObject_NamePrivate);
+            ulong liteFName = ProcessMemory.IsValidObjectPointer(lite) ? _mem.Read<ulong>(lite + (ulong)Off.UObject_NamePrivate) : 0;
+            ulong nodeRow = _mem.Read<ulong>(full + (ulong)Off.HarvestNode_NodeData + (ulong)Off.DataTableRowHandle_RowName);
+            if (IsUniqueChestName(_obj.GetObjectClassInfo(full)?.Name ?? ""))
+                Logger.Info(Cat, $"Baú único perto: {_obj.GetObjectClassInfo(full)?.Name} NodeData='{ReadRowName(full + (ulong)Off.HarvestNode_NodeData + (ulong)Off.DataTableRowHandle_RowName)}' lod=0x{lod:X}");
             samples++;
+            string? Match(ulong q) =>
+                q == 0 ? null : q == fullClass ? "classe" : q == lite ? "litedata" : q == classFName ? "nome da classe" :
+                liteFName != 0 && q == liteFName ? "nome do litedata" : nodeRow != 0 && q == nodeRow ? "linha do nodedata" : null;
+
             for (int off = 0; off + 8 <= buf.Length; off += 8)
             {
-                ulong p = BitConverter.ToUInt64(buf, off);
-                if (!ProcessMemory.IsValidObjectPointer(p)) continue;
-                var pci = _obj.GetObjectClassInfo(p);
-                if (pci != null && pci.Name.EndsWith("LiteData", StringComparison.Ordinal))
+                ulong q = BitConverter.ToUInt64(buf, off);
+                string? kind = Match(q);
+                if (kind != null)
                 {
-                    votes[off + 0x28] = votes.GetValueOrDefault(off + 0x28) + 1;
-                    break;
+                    var key = (kind, off + start, -1);
+                    votes[key] = votes.GetValueOrDefault(key) + 1;
+                    continue;
+                }
+
+                // Um nível de indireção (struct nativa ou componente de LOD), exceto FullActor/ProxyActor.
+                int abs = off + start;
+                if (abs == Off.BaseLODActor_FullActor || abs == Off.BaseLODActor_ProxyActor || q == full) continue;
+                if (!ProcessMemory.IsValidObjectPointer(q) || !_mem.ReadBytes(q, inner)) continue;
+                for (int io = 0; io + 8 <= inner.Length; io += 8)
+                {
+                    string? k2 = Match(BitConverter.ToUInt64(inner, io));
+                    if (k2 == null) continue;
+                    var key = (k2, abs, io);
+                    votes[key] = votes.GetValueOrDefault(key) + 1;
                 }
             }
         }
 
-        if (samples == 0) return; // tenta no próximo scan
-        var best = votes.OrderByDescending(kv => kv.Value).FirstOrDefault();
-        if (best.Value < samples / 2)
+        if (samples == 0)
         {
-            _lodLiteDataOff = -2;
-            Logger.Warn(Cat, $"BaseLODActor.LiteData não encontrado ({best.Value}/{samples}); baús únicos usam a versão completa.");
+            if (_lodIdentityTries == 1)
+                Logger.Info(Cat, "Baús únicos pela versão leve: aguardando um nó de coleta completo por perto para aprender o layout.");
             return;
         }
 
-        _lodLiteDataOff = best.Key;
-        if (best.Key != Off.BaseLODActor_LiteData) Off.Set("BaseLODActor.LiteData", best.Key);
-        Logger.Info(Cat, $"BaseLODActor.LiteData encontrado em 0x{best.Key:X} ({best.Value}/{samples}).");
+        var ranked = votes.OrderByDescending(kv => kv.Value).ToList();
+        Logger.Info(Cat, $"HarvestNodeLODActor ({samples} amostras): " +
+                         (ranked.Count == 0 ? "nenhum campo de identidade" : string.Join(", ", ranked.Take(8).Select(kv => $"{kv.Key.Kind}@{Where(kv.Key.Off, kv.Key.Inner)}={kv.Value}"))));
+        if (ranked.Count == 0 || ranked[0].Value < samples / 2)
+        {
+            _lodIdentityOff = -2;
+            Logger.Warn(Cat, "Identidade do HarvestNodeLODActor não encontrada; baús únicos e rochas explosivas usam só a versão completa.");
+            DumpHarvestLodSamples(lods);
+            return;
+        }
+
+        (_lodIdentityKind, _lodIdentityOff, _lodIdentityInner) = ranked[0].Key;
+        _lodNeg.Clear(); // reclassifica as versões leves de nós já descartadas
+        Logger.Info(Cat, $"Identidade do HarvestNodeLODActor: {_lodIdentityKind} em {Where(_lodIdentityOff, _lodIdentityInner)} ({ranked[0].Value}/{samples}).");
     }
 
-    /// <summary>Baú único pela versão leve: o LiteData se chama LD_World_Buried_UniqueChest_&lt;nome&gt;.</summary>
-    private Collectible? TryBuildLodChest(ulong lod, ulong cls, ClassInfo ci)
+    private static string Where(int off, int inner) => inner < 0 ? $"0x{off:X}" : $"[0x{off:X}]+0x{inner:X}";
+
+    /// <summary>
+    /// Diagnóstico (uma vez, quando a identidade não é encontrada): memória de até 3 HarvestNodeLODActor com versão
+    /// completa — de preferência baús únicos ou rochas explosivas — e dos seus componentes de LOD, campo a campo.
+    /// </summary>
+    private void DumpHarvestLodSamples(ReadOnlySpan<ulong> lods)
     {
-        if (_lodLiteDataOff < 0) return null;
-        ulong lite = _mem.ReadPtr(lod + (ulong)_lodLiteDataOff);
-        if (!ProcessMemory.IsValidObjectPointer(lite)) return null;
-        string liteName = _names.GetObjectName(lite);
-        if (!IsUniqueChestName(liteName) || liteName.EndsWith("_Base", StringComparison.Ordinal)) return null;
+        var picks = new List<(ulong Lod, ulong Full, string Name)>();
+        var others = new List<(ulong Lod, ulong Full, string Name)>();
+        foreach (ulong lod in lods)
+        {
+            if (picks.Count >= 3) break;
+            if (!ProcessMemory.IsValidObjectPointer(lod) || _obj.GetObjectClassInfo(lod)?.Name != "HarvestNodeLODActor") continue;
+            ulong full = _mem.ReadPtr(lod + (ulong)Off.BaseLODActor_FullActor);
+            if (!ProcessMemory.IsValidObjectPointer(full)) continue;
+            string name = _obj.GetObjectClassInfo(full)?.Name ?? "?";
+            if (IsUniqueChestName(name) || IsBombableRockName(name)) picks.Add((lod, full, name));
+            else if (others.Count < 2) others.Add((lod, full, name));
+        }
+
+        picks.AddRange(others.Take(Math.Max(0, 3 - picks.Count)));
+        var bytes = new byte[0x2A0 - 0x28];
+        foreach (var (lod, full, name) in picks)
+        {
+            string row = ReadRowName(full + (ulong)Off.HarvestNode_NodeData + (ulong)Off.DataTableRowHandle_RowName);
+            Logger.Info(Cat, $"HarvestNodeLODActor 0x{lod:X} ← {name} (NodeData='{row}', completa 0x{full:X}):");
+            if (_mem.ReadBytes(lod + 0x28, bytes))
+                for (int off = 0; off + 8 <= bytes.Length; off += 8)
+                {
+                    string d = DescribeQword(BitConverter.ToUInt64(bytes, off), bytes, off);
+                    if (d.Length > 0) Logger.Info(Cat, $"    +0x{off + 0x28:X3}: {d}");
+                }
+
+            ulong p68 = _mem.ReadPtr(lod + 0x68);
+            var pb = new byte[0xC0];
+            if (ProcessMemory.IsValidObjectPointer(p68) && _mem.ReadBytes(p68, pb))
+            {
+                Logger.Info(Cat, $"  [+0x068] → 0x{p68:X}:");
+                for (int off = 0; off + 8 <= pb.Length; off += 8)
+                {
+                    string d = DescribeQword(BitConverter.ToUInt64(pb, off), pb, off);
+                    if (d.Length > 0) Logger.Info(Cat, $"      +0x{off:X3}: {d}");
+                }
+            }
+
+            if (!_mem.TryRead(lod + (ulong)Off.BaseLODActor_LODComponents, out TArrayHeader arr) || arr.Num <= 0 || !arr.IsPlausible(64)) continue;
+            var comps = new ulong[arr.Num];
+            if (!_mem.ReadArray(arr.Data, comps.AsSpan())) continue;
+            var cb = new byte[0xC0 - 0x28];
+            Logger.Info(Cat, $"  {arr.Num} componentes de LOD:");
+            foreach (ulong comp in comps)
+            {
+                if (!ProcessMemory.IsValidObjectPointer(comp) || !_mem.ReadBytes(comp + 0x28, cb)) continue;
+                Logger.Info(Cat, $"  componente 0x{comp:X} [{_obj.GetObjectClassInfo(comp)}]:");
+                for (int off = 0; off + 8 <= cb.Length; off += 8)
+                {
+                    string d = DescribeQword(BitConverter.ToUInt64(cb, off), cb, off);
+                    if (d.Length > 0) Logger.Info(Cat, $"      +0x{off + 0x28:X3}: {d}");
+                }
+            }
+        }
+    }
+
+    /// <summary>Nome do tipo do nó na versão leve: classe da versão completa se existir, senão o campo aprendido.</summary>
+    private string LodHarvestTypeName(ulong lod)
+    {
+        ulong full = _mem.ReadPtr(lod + (ulong)Off.BaseLODActor_FullActor);
+        if (ProcessMemory.IsValidObjectPointer(full)) return _obj.GetObjectClassInfo(full)?.Name ?? "";
+        if (_lodIdentityOff < 0) return "";
+        ulong q = _mem.Read<ulong>(lod + (ulong)_lodIdentityOff);
+        if (_lodIdentityInner >= 0) q = ProcessMemory.IsValidObjectPointer(q) ? _mem.Read<ulong>(q + (ulong)_lodIdentityInner) : 0;
+        if (q == 0) return "";
+        try
+        {
+            return _lodIdentityKind is "classe" or "litedata"
+                ? ProcessMemory.IsValidObjectPointer(q) ? _names.GetObjectName(q) : ""
+                : _names.GetName(new FName { ComparisonIndex = (int)(q & 0xFFFFFFFF), Number = (int)(q >> 32) });
+        }
+        catch
+        {
+            return "";
+        }
+    }
+
+    /// <summary>
+    /// Nó de coleta pela versão leve: baú único (BP_World_Buried_UniqueChest_&lt;nome&gt;_C / LD_…) ou rocha explosiva
+    /// (BP_Bombable_Rock_C / NodeData "Bombable_Rock").
+    /// </summary>
+    private Collectible? TryBuildLodHarvest(ulong lod, ulong cls, ClassInfo ci)
+    {
+        string typeName = LodHarvestTypeName(lod);
+        if (typeName.Length == 0 || typeName.EndsWith("_Base", StringComparison.Ordinal) ||
+            typeName.EndsWith("_Base_C", StringComparison.Ordinal)) return null;
+
+        string category;
+        if (_cfg.EspUniqueChests && IsUniqueChestName(typeName)) category = UniqueChestCategory;
+        else if (_cfg.EspBombableRocks && IsBombableRockName(typeName)) category = BombableRockCategory;
+        else return null;
 
         var c = new Collectible
         {
             Actor = lod,
             ClassPtr = cls,
             Class = ci,
-            Filter = UniqueChestCategory,
+            Filter = category,
             MatchedBy = "versão leve",
-            ColorHex = ColorFor(UniqueChestCategory),
+            ColorHex = ColorFor(category),
             IsLod = true,
-            Name = Collectible.UniqueChestName(liteName),
+            Name = category == UniqueChestCategory ? Collectible.UniqueChestName(typeName) : BombableRockName,
         };
-        Logger.Info(Cat, $"Novo item pela versão leve (uniquechest): '{c.Name}' LiteData='{liteName}' lod=0x{lod:X}");
+        Logger.Info(Cat, $"Novo item pela versão leve ({category}): '{c.Name}' tipo='{typeName}' lod=0x{lod:X}");
         return c;
     }
 
@@ -1748,6 +1911,7 @@ public sealed class EntityManager
                 KeyCategory => _cfg.EspKeys,
                 UniqueChestCategory => _cfg.EspUniqueChests,
                 ZipCategory => _cfg.EspZipR,
+                BombableRockCategory => _cfg.EspBombableRocks,
                 _ => _cfg.EspCollectibles,
             };
             if (!enabled) continue;
@@ -1766,7 +1930,7 @@ public sealed class EntityManager
             }
 
             c.DistanceMeters = c.Location.DistanceTo(cam.Location) / 100.0;
-            if (c.DistanceMeters > (c.Filter is EggCategory or OrcTransmitterCategory or BossCategory or RecipeCategory or TechChipCategory or KeyCategory or UniqueChestCategory or ZipCategory ? eggDist : maxDist)) continue;
+            if (c.DistanceMeters > (c.Filter is EggCategory or OrcTransmitterCategory or BossCategory or RecipeCategory or TechChipCategory or KeyCategory or UniqueChestCategory or ZipCategory or BombableRockCategory ? eggDist : maxDist)) continue;
 
             // HealthState == Dead → nó já quebrado (molar coletado).
             c.Collected = c.HealthComponent != 0 &&
@@ -1780,6 +1944,20 @@ public sealed class EntityManager
                 {
                     c.LoggedState = st2;
                     Logger.Info(Cat, $"{c.Name} 0x{c.Actor:X} a {c.DistanceMeters:F0} m: {(c.Collected ? (c.Filter == ZipCategory ? "Tirolesa não está mais no inventário (oculto)" : "inventário vazio (oculto)") : "com itens")}.");
+                }
+            }
+
+            // Baú de tesouro único já aberto: Switch.OCLComponent → bIsOpen (bit 0x10 do byte +0x118).
+            if (c.IsTreasureChest)
+            {
+                ulong ocl = _mem.ReadPtr(c.Actor + (ulong)Off.Switch_OCLComponent);
+                byte flags = 0;
+                c.Collected = ProcessMemory.IsValidObjectPointer(ocl) && _mem.TryRead(ocl + (ulong)Off.OCLComponent_Flags, out flags) && (flags & 0x10) != 0;
+                int st3 = flags;
+                if (st3 != c.LoggedState)
+                {
+                    c.LoggedState = st3;
+                    Logger.Info(Cat, $"{c.Name} 0x{c.Actor:X} a {c.DistanceMeters:F0} m: flags do OCL=0x{flags:X2} → {(c.Collected ? "aberto (oculto)" : "fechado")}.");
                 }
             }
 

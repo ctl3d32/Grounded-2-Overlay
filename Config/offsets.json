@@ -130,6 +130,8 @@
     "LootBag.InventoryComponent": "0x390",
     "InventoryComponent.Items": "0x1D0",
     "ProxyLootBagActor.Items": "0x208",
-    "BaseLODActor.LiteData": "0xF0"
+    "BaseLODActor.LiteData": "0xF0",
+    "Switch.OCLComponent": "0x308",
+    "OCLComponent.Flags": "0x118"
   }
 }
